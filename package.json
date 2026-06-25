@@ -2,14 +2,21 @@
   "name": "arck-engy-pro",
   "version": "2.0.0",
   "private": true,
+  "description": "ARCK & ENGY Pro — ferramenta visual de modelação de arquitectura de sistemas",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "start": "cd packages/ui-web && npm start",
+    "dev": "cd packages/ui-web && npm run dev",
     "build": "cd packages/ui-web && npm run build",
+    "test": "npx tsx packages/core/teste-coracao.ts && npx tsx packages/core/teste-fronteira.ts",
+    "test:core": "npx tsx packages/core/teste-coracao.ts",
+    "test:boundary": "npx tsx packages/core/teste-fronteira.ts",
     "cli": "node packages/cli/bin/arck.js"
   },
-  "author": "Monarca Engineering",
-  "license": "MIT"
+  "author": "Tiago Moraes Chaves — Monarca Engineering",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/node": "^26.0.0"
+  }
 }

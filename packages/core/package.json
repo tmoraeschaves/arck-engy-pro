@@ -1,0 +1,19 @@
+{
+  "name": "@arck/core",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Núcleo de domínio ARCK & ENGY — TypeScript puro, sem React, sem UI",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test":          "npx tsx teste-coracao.ts && npx tsx teste-fronteira.ts",
+    "test:core":     "npx tsx teste-coracao.ts",
+    "test:boundary": "npx tsx teste-fronteira.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

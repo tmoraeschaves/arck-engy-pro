@@ -1,0 +1,36 @@
+# Dependências
+node_modules/
+.npm
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Ambiente local
+.env
+.env.local
+.env.*.local
+
+# Editores e SO
+.DS_Store
+Thumbs.db
+*.suo
+*.user
+.vscode/settings.json
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Ficheiros de exportação gerados pela app (não são código-fonte)
+arck-project-*.json
+arck_project_*.json
+
+# Cache
+.cache/
+.vite/
+
+# Claude Code (dados de sessão locais — não são código-fonte)
+.claude/

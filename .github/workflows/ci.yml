@@ -1,0 +1,116 @@
+# ARCK & ENGY Pro — CI Pipeline
+# EV-18: a regra "domínio não importa UI/infra" vira lei automática.
+#
+# O que este workflow garante:
+#   1. npm test passa (53 testes: coracao + fronteira)
+#   2. Build Vite produção compila limpo
+#   3. O core (packages/core/src/) não importa nada de fora dele próprio
+#
+# Dispara em: push e pull_request para main e develop.
+# Se falhar, o merge é bloqueado (configurar Branch Protection no GitHub).
+
+name: ARCK CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ────────────────────────────────────────────────────────────────
+  # JOB 1 — Testes do coração (EV-01, EV-02)
+  # Prova que o domínio é testável sem UI, sem banco, sem tela.
+  # ────────────────────────────────────────────────────────────────
+  test-core:
+    name: "Testes do Coracao (EV-01/EV-02)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Correr testes do coração
+        run: npm run test:core
+
+      - name: Correr testes de fronteira
+        run: npm run test:boundary
+
+  # ────────────────────────────────────────────────────────────────
+  # JOB 2 — EV-18: o domínio não pode importar UI nem infra
+  # Se violar, o build falha e o merge é bloqueado.
+  # Esta é a regra RL-0B do Manual virando lei automática.
+  # ────────────────────────────────────────────────────────────────
+  check-domain-isolation:
+    name: "EV-18 - Dominio isolado (RL-02)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verificar que o core não importa UI nem infra
+        run: |
+          echo "A verificar isolamento do domínio (packages/core/src/)..."
+
+          VIOLATIONS=$(grep -rn \
+            --include="*.ts" \
+            -E "from ['\"]react['\"]|from ['\"]react-dom['\"]|from ['\"]lucide|from ['\"]@vitejs|from ['\"]vite|from ['\"]ui-web|from ['\"]\.\.\/\.\.\/ui" \
+            packages/core/src/ 2>/dev/null || true)
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo ""
+            echo "EV-18 VIOLADO: o domínio está a importar UI ou infra externa."
+            echo "   A regra RL-02 do Manual proíbe que packages/core/src/ importe"
+            echo "   qualquer coisa de fora do próprio core."
+            echo ""
+            echo "   Violations encontradas:"
+            echo "$VIOLATIONS"
+            echo ""
+            echo "   Corrija antes de fazer merge."
+            exit 1
+          fi
+
+          echo "EV-18 aprovado: packages/core/src/ esta isolado."
+
+  # ────────────────────────────────────────────────────────────────
+  # JOB 3 — Build de produção (RL-23)
+  # O mesmo artefacto que vai para produção tem de compilar limpo.
+  # ────────────────────────────────────────────────────────────────
+  build:
+    name: "Build de Producao (RL-23)"
+    runs-on: ubuntu-latest
+    needs: [test-core, check-domain-isolation]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Build Vite produção
+        run: npm run build
+
+      - name: Verificar que o dist foi gerado
+        run: |
+          if [ ! -f "packages/ui-web/dist/index.html" ]; then
+            echo "Build falhou: dist/index.html não foi gerado."
+            exit 1
+          fi
+          echo "Build limpo. Artefacto gerado em packages/ui-web/dist/"
