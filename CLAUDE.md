@@ -12,10 +12,14 @@
 - Stack: React + Vite + JavaScript, monorepo npm workspaces
 - Repositório: privado no GitHub (INPI classe 42 pendente)
 
-## Estado rápido (2026-06-24)
+## Estado rápido (2026-06-26)
 
-- **Movimentos 0–5 concluídos** — coração TypeScript em `packages/core/src/` com 53 testes passando; `App.jsx` consome `@arck/core` directamente (`criarArck`/`criarEngy`/`interpretarTensao`); validação inline eliminada; INÉRCIA mostra "INÉRCIA" no medidor; `useArckCore.js` exporta `estadoTensao`
-- **Movimento 6 a seguir** — CI anti-recaída (EV-18)
+- **Movimentos 0–6 construídos e commitados** — 3 commits em `main` no GitHub (`tmoraeschaves/arck-engy-pro`)
+- **53 testes passando**, validação inline eliminada, INÉRCIA mostra texto, CI no repositório
+- **Falta confirmar na próxima sessão:**
+  1. Abrir GitHub → separador Actions → confirmar 3 jobs verdes no workflow `ARCK CI`
+  2. Settings → Branches → Branch protection rules → main → marcar os 3 jobs como required
+  - Esse clique fecha o Movimento 6 e torna o EV-18 lei automática
 
 ## Regra de ouro para este projecto
 
