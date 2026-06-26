@@ -11,7 +11,7 @@ export default defineConfig({
     alias: {
       // Permite `import { criarArck } from '@arck/core'` em todo o ui-web
       // sem caminhos relativos frágeis (../../../../core/src/...)
-      '@arck/core': path.resolve(__dirname, '../../core/src/index.ts'),
+      '@arck/core': path.resolve(__dirname, '../core/src/index.ts'),
     },
   },
 });
