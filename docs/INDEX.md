@@ -10,7 +10,7 @@
 
 Ferramenta visual de modelação de sistemas com 5 camadas (L1–L5), 7 sectores, canvas SVG interactivo. Stack: React + Vite + JavaScript (monorepo npm workspaces).
 
-## Estado actual (2026-06-24)
+## Estado actual (2026-06-26)
 
 ### Movimentos concluídos ✅
 
@@ -22,18 +22,23 @@ Ferramenta visual de modelação de sistemas com 5 camadas (L1–L5), 7 sectores
 | 3 | Contrato (porta do coração) | `contratos.ts`, `servico.ts` — IArck, IEngy, IMentor |
 | 4 | Matar 1ª cópia — `useArckCore.js` consome `@arck/core` | Bug modo Livre corrigido; `tensao` real; alias Vite; `estadoTensao` exportado |
 | 5 | Matar 2ª cópia — `App.jsx` consome `@arck/core` directamente | `validNext` eliminado das decisões; ENGY mede; INÉRCIA mostra texto |
+| 6 | CI anti-recaída (EV-18) | ARCK CI #4 verde — 3 jobs: testes + isolamento + build Vite |
 
-### Próximos movimentos ⬜
+### Tarefa de configuração pendente (não é código)
 
-| # | Movimento | O que fazer |
-|---|---|---|
-| 6 | CI anti-recaída (EV-18) | Pipeline que reprova se domínio importar UI/infra |
+- GitHub → Settings → Branches → Branch protection rules → main → marcar os 3 jobs como required status checks:
+  - `Testes do Coracao (EV-01/EV-02)`
+  - `EV-18 - Dominio isolado (RL-02)`
+  - `Build de Producao (RL-23)`
 
 ## Verificação rápida
 
 ```bash
 npm test
 # 42 passaram (coracao) + 11 passaram (fronteira) = 53 total, 0 falharam.
+
+npm run build
+# vite v7.x — 1749 modules transformed. dist/index.html gerado.
 ```
 
 ## Estrutura actual do core
@@ -54,10 +59,10 @@ packages/core/
 └── package.json          ← @arck/core
 
 packages/ui-web/
-├── vite.config.js        ← alias @arck/core
+├── vite.config.js        ← alias @arck/core → ../core/src/index.ts
 ├── src/
-│   ├── App.jsx           ← monólito 1270 linhas (Movimento 5 pendente)
-│   └── hooks/useArckCore.js  ← ✅ M4: usa @arck/core, tensão real
+│   ├── App.jsx           ← monólito ~1270 linhas (candidato a M7)
+│   └── hooks/useArckCore.js  ← M4: usa @arck/core, tensão real
 └── package.json
 
 .gitignore                ← node_modules, dist, arck-project-*.json
@@ -87,19 +92,11 @@ L5 → L2  (Rebate Síncrono — fecha no Hub, nunca na Ignição)
 
 Tudo o que não está nesta lista é proibido.
 
-## Instrução para o Claude Code (Movimento 6)
-
-Criar pipeline CI (GitHub Actions ou similar) que:
-- Corre `npm test` e falha se algum teste falhar
-- Verifica que nenhum ficheiro em `packages/core/src/` importa de `packages/ui-web/` ou de módulos React/DOM (EV-18)
-- Bloqueia merge se qualquer uma das regras falhar
-
 ## Referência — Manual de Montagem
 
 `docs/MANUAL_MONTAGEM_ESQUELETO.md` — fundação de engenharia de software genérica (v1.0 consolidado com 7 IAs). Contém 36 regras de ligação (RL-01 a RL-36) e 24 testes de validação estrutural (EV-01 a EV-24).
 
 **Auditoria do ARCK contra o Manual:**
 - RL-01/02/03/05/07/09 ✅ implementadas
-- RL-18 (config por ambiente) ❌ não existe ainda
-- RL-22-28 (dev→staging→prod) ❌ não existe ainda
-- EV-18 (CI reprova import errado) ❌ Movimento 6
+- RL-18 (config por ambiente) — não existe ainda
+- RL-22-28 (dev→staging→prod) — não existe ainda

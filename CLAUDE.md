@@ -14,12 +14,12 @@
 
 ## Estado rápido (2026-06-26)
 
-- **Movimentos 0–6 construídos e commitados** — 3 commits em `main` no GitHub (`tmoraeschaves/arck-engy-pro`)
-- **53 testes passando**, validação inline eliminada, INÉRCIA mostra texto, CI no repositório
-- **Falta confirmar na próxima sessão:**
-  1. Abrir GitHub → separador Actions → confirmar 3 jobs verdes no workflow `ARCK CI`
-  2. Settings → Branches → Branch protection rules → main → marcar os 3 jobs como required
-  - Esse clique fecha o Movimento 6 e torna o EV-18 lei automática
+- **Movimentos 0–6 concluídos** — CI verde no ARCK CI #4 (commit `664598e`)
+- **53 testes passando**, validação inline eliminada, INÉRCIA mostra texto
+- **Build Vite produção limpo** — fix: alias `@arck/core` em `vite.config.js` corrigido (`../../core` → `../core`)
+- **Única tarefa pendente para fechar M6:**
+  - GitHub → Settings → Branches → Branch protection rules → main → marcar os 3 jobs como required:
+    `Testes do Coracao (EV-01/EV-02)`, `EV-18 - Dominio isolado (RL-02)`, `Build de Producao (RL-23)`
 
 ## Regra de ouro para este projecto
 
