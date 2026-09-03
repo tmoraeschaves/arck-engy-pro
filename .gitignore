@@ -34,3 +34,6 @@ arck_project_*.json
 
 # Claude Code (dados de sessão locais — não são código-fonte)
 .claude/
+
+# Referências pesadas (PDFs de conceito antigos) — ficam locais
+docs/referencias/conceito-original/
