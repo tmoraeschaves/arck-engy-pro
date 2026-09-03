@@ -169,3 +169,15 @@ o roadmap (DEC-001), bloqueado por `LICENSE` (0 bytes) e pelo nome (DEC-007). At
 M6 é: **CI feito e verde; portão por disciplina, não por mecanismo.**
 
 A tabela de "Movimentos concluídos" no `INDEX.md` passa a dizer isto em vez de "M6 completo".
+
+---
+
+## DEC-011 — Todo o material público parte das quatro perguntas
+**Data:** 2026-09 · **Decisão de:** Tiago Moraes Chaves
+
+Todo o material voltado para fora — `README.md`, publicação de lançamento, landing page,
+deck, descrição do repositório, texto de loja — parte das mesmas quatro perguntas, pela
+mesma ordem, com as mesmas respostas: **O QUÊ · POR QUÊ · PARA QUÊ · PARA QUEM**. A mensagem
+não se reinventa por material.
+
+Fonte única: **`docs/POSICIONAMENTO.md`**. Também é o brief para a sessão de naming (DEC-007).
