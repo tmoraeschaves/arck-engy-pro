@@ -7,7 +7,9 @@
 #   3. O core (packages/core/src/) não importa nada de fora dele próprio
 #
 # Dispara em: push e pull_request para main e develop.
-# Se falhar, o merge é bloqueado (configurar Branch Protection no GitHub).
+# NOTA (DEC-010): a Branch Protection do GitHub está configurada com estes 3 jobs
+# como required, mas NAO e enforced em repo privado no plano Free — passa a valer
+# (de graca) quando o repositorio for publico. Ate la o CI e sinal, nao portao.
 
 name: ARCK CI
 
@@ -33,7 +35,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Instalar dependências
@@ -101,7 +103,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Instalar dependências

@@ -146,3 +146,26 @@ de teste.
 (herda o alias `@arck/core` do `vite.config.js`). `packages/core` continua em `tsx` — a
 fronteira é explícita. Os testes puros da UI migraram para `packages/ui-web/testes/*.test.mjs`;
 os de componente ficam em `src/**/*.test.jsx`. O CI corre `npm run test:ui` dentro do job `test-core`.
+
+---
+
+## DEC-010 — O CI anti-recaída (M6) não é enforced enquanto o repo for privado
+**Data:** 2026-09 · **Decisão de:** Tiago Moraes Chaves · **Situação, não escolha**
+
+O Movimento 6 assumia que marcar os 3 jobs como *required status checks* no GitHub
+tornava o CI um portão automático (merge bloqueado se vermelho). **Não torna, neste caso:**
+a Branch Protection não é *enforced* em repositório privado no plano Free do GitHub — só
+funciona em repos públicos ou em contas Team/Enterprise pagas. A regra está configurada
+(3 checks, "require PR" desligado) mas aparece como **"Not enforced"**.
+
+Consequência honesta: o PR #1 passou porque o CI estava verde, não porque *tinha* de estar.
+A recaída (o domínio voltar a importar UI/infra) continua tecnicamente possível — o
+`check-domain-isolation` avisa, mas não bloqueia.
+
+**Decisão:** aceitar e registar. Não pagar o plano Team só para isto (opção rejeitada:
+gastar dinheiro para trancar uma porta num projecto solo que vai a público na mesma). O
+*enforcement* activa-se sozinho, de graça, quando o repositório for público — o que já é
+o roadmap (DEC-001), bloqueado por `LICENSE` (0 bytes) e pelo nome (DEC-007). Até lá, o
+M6 é: **CI feito e verde; portão por disciplina, não por mecanismo.**
+
+A tabela de "Movimentos concluídos" no `INDEX.md` passa a dizer isto em vez de "M6 completo".

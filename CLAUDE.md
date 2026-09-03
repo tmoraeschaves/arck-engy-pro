@@ -14,7 +14,8 @@
 
 ## Estado rápido (2026-09)
 
-- **Movimentos 0–6 concluídos.**
+- **Movimentos 0–5 concluídos.** M6 (CI anti-recaída): jobs feitos e verdes, mas a branch
+  protection **não é enforced** em repo privado no plano Free (DEC-010) — activa quando o repo abrir.
 - **Movimento 7 (quebrar o `App.jsx`) — fatias 1–4 feitas:** `config/`, `lib/`, `infra/`,
   `hooks/projeto-reducer.js` extraídos (App.jsx 1293 → ~1072 linhas). Órfãos `useArckCore.js`
   e `components/MentorPanel/` apagados (RL-37). Ver `docs/MOVIMENTO_7.md`.
