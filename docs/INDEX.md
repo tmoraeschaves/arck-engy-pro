@@ -49,7 +49,7 @@ peça de portefólio para ganhar credibilidade em arquitectura de sistemas. Vect
 | 3 | Contrato (porta do coração) | `contratos.ts`, `servico.ts` — IArck, IEngy, IMentor |
 | 4 | Matar 1ª cópia — `useArckCore.js` consome `@arck/core` | Bug modo Livre corrigido; `tensao` real; alias Vite; `estadoTensao` exportado |
 | 5 | Matar 2ª cópia — `App.jsx` consome `@arck/core` directamente | `validNext` eliminado das decisões; ENGY mede; INÉRCIA mostra texto |
-| 6 | CI anti-recaída (EV-18) | ARCK CI #4 verde — 3 jobs: testes + isolamento + build Vite |
+| 6 | CI anti-recaída (EV-18) | CI verde — 3 jobs: testes + isolamento + build. ⚠️ **Branch protection configurada mas NÃO enforced** (repo privado, plano Free — ver DEC-010). O portão automático só passa a valer quando o repo for público. |
 
 ### Consolidação + Movimento 7 (fatias 1–4) — PR #1
 
