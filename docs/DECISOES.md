@@ -121,6 +121,23 @@ empresa de ferramentas manuais. Rejeitado.
 verificação de domínio e de marca (classe 42) feita *antes* de apresentar
 candidatos. O ARCK/ENGY/MENTOR mantêm-se como nomes dos componentes internos.
 
+### Ponto de situação do naming (2026-09-03)
+
+Sessão de brainstorm gerou ~16 candidatos, verificados na web (sinal de colisão,
+**não** limpeza legal de marca).
+
+- **Nome de trabalho até haver bloco dedicado: "A&E / Architect & Engineer"** — o que já está na UI.
+  Decisão do Arquitecto: não churnar; fixa-se um nome a sério de uma vez, noutro dia.
+- **Rejeitados (colisão):** Tekton (CNCF), A&E/ACE/SAE (descritivo + A&E Networks + Ace editor +
+  SAE International — nota: colide como marca, aceite só como nome de trabalho), 5L / Five Tier /
+  Application Tier / Logical Architecture / ArchLog / ArchArt (descritivo ou "Arch-" colide com
+  ArchUnit), Strata (Strata 3D + metodologia STRATA), Tessera (4+ dev tools), Darque ("dark" +
+  Darque Tan), BrightPlan (empresa fintech EUA), Compasso (Compasso UOL, BR), Planta (PLANTA Project).
+- **Sobreviventes / shortlist (direcção "o estúdio do arquitecto, não a obra"):**
+  **Prancheta** (recomendação — a superfície onde o arquitecto projecta; PT; sem colisão em
+  software; `prancheta.dev` provavelmente livre), Estirador, Croqui, Maquete, Nivex.
+- Brief da sessão dedicada: `docs/POSICIONAMENTO.md` (as 4 perguntas).
+
 ---
 
 ## DEC-008 — Repositório não cita projectos paralelos
