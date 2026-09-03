@@ -10,11 +10,12 @@
   "scripts": {
     "dev": "cd packages/ui-web && npm run dev",
     "build": "cd packages/ui-web && npm run build",
-    "test": "tsx packages/core/teste-coracao.ts && tsx packages/core/teste-fronteira.ts",
+    "test": "npm run test:core && npm run test:boundary && npm run test:ui",
     "test:core": "tsx packages/core/teste-coracao.ts",
-    "test:boundary": "tsx packages/core/teste-fronteira.ts"
+    "test:boundary": "tsx packages/core/teste-fronteira.ts",
+    "test:ui": "cd packages/ui-web && vitest run"
   },
-  "author": "Tiago Moraes Chaves — Monarca Engineering",
+  "author": "Tiago Moraes Chaves",
   "license": "UNLICENSED",
   "devDependencies": {
     "@types/node": "^26.0.0",

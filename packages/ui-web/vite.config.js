@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -13,5 +14,11 @@ export default defineConfig({
       // sem caminhos relativos frágeis (../../../../core/src/...)
       '@arck/core': path.resolve(__dirname, '../core/src/index.ts'),
     },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./vitest.setup.js'],
+    include: ['src/**/*.test.{js,jsx}', 'testes/**/*.test.{js,jsx,mjs}'],
   },
 });

@@ -2,7 +2,7 @@
 # EV-18: a regra "domínio não importa UI/infra" vira lei automática.
 #
 # O que este workflow garante:
-#   1. npm test passa (53 testes: coracao + fronteira)
+#   1. Testes passam: core via tsx (53) + ui-web via vitest (57) = 110
 #   2. Build Vite produção compila limpo
 #   3. O core (packages/core/src/) não importa nada de fora dele próprio
 #
@@ -44,6 +44,9 @@ jobs:
 
       - name: Correr testes de fronteira
         run: npm run test:boundary
+
+      - name: Correr testes da UI (ponte + fluxo — RL-PONTE-01)
+        run: npm run test:ui
 
   # ────────────────────────────────────────────────────────────────
   # JOB 2 — EV-18: o domínio não pode importar UI nem infra

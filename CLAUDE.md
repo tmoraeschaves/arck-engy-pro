@@ -1,7 +1,7 @@
 # CLAUDE.md — ARCK & ENGY Pro
 
 > Lê este ficheiro PRIMEIRO em qualquer nova sessão. É a planta do projecto.
-> Ficheiro de contexto detalhado: `docs/INDEX.md`
+> Contexto detalhado: `docs/INDEX.md` · Decisões: `docs/DECISOES.md` · Movimento 7: `docs/MOVIMENTO_7.md`
 
 ## O projecto
 
@@ -9,27 +9,32 @@
 - ARCK = o Arquitecto (valida ligações, impede erros)
 - ENGY = o Medidor de Tensão (supervisiona o estado — 4 estados)
 - MENTOR = o Pedagogo (interpreta o estado, fala com o utilizador)
-- Stack: React + Vite + JavaScript, monorepo npm workspaces
-- Repositório: privado no GitHub (INPI classe 42 pendente)
+- Stack: React + Vite + JavaScript, monorepo npm workspaces (`packages/core`, `packages/ui-web`)
+- Direcção: ferramenta **aberta e gratuita**, peça de portefólio (DEC-001). Repositório no GitHub.
 
-## Estado rápido (2026-06-26)
+## Estado rápido (2026-09)
 
-- **Movimentos 0–6 concluídos** — CI verde no ARCK CI #4 (commit `664598e`)
-- **53 testes passando**, validação inline eliminada, INÉRCIA mostra texto
-- **Build Vite produção limpo** — fix: alias `@arck/core` em `vite.config.js` corrigido (`../../core` → `../core`)
-- **Única tarefa pendente para fechar M6:**
-  - GitHub → Settings → Branches → Branch protection rules → main → marcar os 3 jobs como required:
-    `Testes do Coracao (EV-01/EV-02)`, `EV-18 - Dominio isolado (RL-02)`, `Build de Producao (RL-23)`
+- **Movimentos 0–6 concluídos.**
+- **Movimento 7 (quebrar o `App.jsx`) — fatias 1–4 feitas:** `config/`, `lib/`, `infra/`,
+  `hooks/projeto-reducer.js` extraídos (App.jsx 1293 → ~1072 linhas). Órfãos `useArckCore.js`
+  e `components/MentorPanel/` apagados (RL-37). Ver `docs/MOVIMENTO_7.md`.
+- **Testes:** core em `tsx` (53), `ui-web` em **vitest + jsdom + @testing-library/react** (57) — total **110** (DEC-009).
+- **Correcções recentes:** Tailwind v4 a compilar; contraste; vista 3D utilizável.
+- **Falta no v1:** Fatia 5 (`Canvas.jsx` + `No`/`Ligacao`/`Anotacao` + `useAtalhos`), Fatia 6
+  (App = composição), e o **envelope**: `LICENSE` (0 bytes), `README.md` (não existe), nome novo.
+- **Próximo passo de código:** Movimento 7, Fatia 5.
 
 ## Regra de ouro para este projecto
 
-**A fonte única de verdade da validação é `packages/core/src/`.** Nunca duplicar lógica de validação no `App.jsx` ou `useArckCore.js`. Se precisas de validar uma ligação, usa `criarArck()` de `@arck/core`.
+**A fonte única de verdade da validação é `packages/core/src/`.** Nunca duplicar lógica de
+validação nos componentes. Para validar uma ligação, usa a ponte `packages/ui-web/src/lib/core-bridge.js`
+(`validarNovaLigacao`, `medirTensao`), que encapsula `criarArck()`/`criarEngy()` de `@arck/core`.
 
 ## Verificação rápida
 
 ```bash
-npm test
-# Deve imprimir: 42 passaram (coracao) + 11 passaram (fronteira) = 53 total, 0 falharam.
+npm test        # core (53) + ui-web (57) = 110, 0 falhas
+npm run build   # Vite produção, dist/index.html gerado
 ```
 
 ## As regras do domínio ARCK
@@ -50,29 +55,34 @@ Ligações válidas: `L1→L2`, `L2→L3`, `L3→L4`, `L4→L5`, `L5→L2`. Tudo
 ## Arquitectura dos pacotes
 
 ```
-packages/core/           ← @arck/core (TypeScript puro, sem React, sem UI)
+packages/core/           ← @arck/core (TypeScript puro, sem React, sem UI) — testes via tsx
 ├── src/
 │   ├── index.ts         ← barrel export — único ponto de entrada
 │   ├── dominio.ts       ← tipos (Camada, No, Ligacao, Veredito, TipoLigacao)
 │   ├── arck-validador.ts← ARCK: regras de validação (fonte única)
 │   ├── engy-tensao.ts   ← ENGY: 4 estados + interpretarTensao()
 │   ├── contratos.ts     ← IArck, IEngy, IMentor — porta pública
-│   ├── mentor.ts        ← MENTOR: pedagogo, interpreta e comunica
+│   ├── mentor.ts        ← MENTOR: pedagogo
 │   └── servico.ts       ← criarArck(), criarEngy(), criarMentor() — fábrica
-├── teste-coracao.ts     ← 42 testes (domínio + Mentor + INÉRCIA)
-├── teste-fronteira.ts   ← 11 testes (edge cases)
-├── tsconfig.json
-└── package.json
+├── teste-coracao.ts     ← 42 testes · teste-fronteira.ts ← 11 testes
 
-packages/ui-web/src/     ← React + Vite (consome @arck/core via alias Vite)
-├── hooks/useArckCore.js ← ✅ M4: consome @arck/core, tensão real
-└── App.jsx              ← monólito 1270 linhas (Movimento 5 pendente)
-
-packages/cli/            ← CLI (futuro)
-packages/exporters/      ← Exportadores (futuro)
+packages/ui-web/src/     ← React + Vite (consome @arck/core via alias Vite) — testes via vitest
+├── config/              ← dados estáticos (camadas, sectores, formas, templates, tutorial, app-meta)
+├── lib/                 ← funções puras (uid, core-bridge, flow-report)
+├── infra/               ← efeitos colaterais isolados (persistencia, exportar)
+├── hooks/projeto-reducer.js ← useReducer: o documento (nós, ligações, formas…), 21 acções (DEC-004)
+├── componentes/         ← apresentação (FormasSVG; No/Ligacao/Canvas na Fatia 5)
+└── App.jsx              ← ainda ~1072 linhas de JSX/estado efémero — Fatia 5/6 pendentes
+packages/ui-web/testes/  ← testes puros (vitest) · src/**/*.test.jsx ← testes de componente
 ```
 
 ## Manual de referência
 
-`docs/` — Manual de Montagem v1.0 (fundação Claude + validação cruzada de 7 IAs).
-Princípio central: dependência aponta sempre para dentro (L1→L2→L3). Domínio não importa nada de fora.
+`docs/fundacao/metodo/01_MANUAL_ESQUELETO_v2.0_FINAL.md` — canónico (RL-01 a RL-39, EV-01 a EV-26,
+Lições do Campo). Princípio central: dependência aponta sempre para dentro. Domínio não importa nada de fora.
+
+`docs/fundacao/anatomia-do-software/` — o sistema de navegação M0-M5.
+`docs/fundacao/README.md` — índice do que foi consolidado.
+
+⚠️ **Não re-introduzir cópias soltas de `.ts` do core em `docs/`** — a fonte única é `packages/core/src/`.
+⚠️ **Este repositório não cita projectos/sistemas/empresas paralelos do Arquitecto** (DEC-008).
