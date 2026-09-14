@@ -1,11 +1,15 @@
 <!doctype html>
-<html lang="en">
+<!-- lang="pt-PT" + translate="no": a app é escrita em português. Sem isto o Chrome
+     via `lang="en"` (o default do Vite) oferecia "traduzir para português" e, ao
+     mexer nos nós de texto do DOM, partia a reconciliação do React → página em
+     branco. Ver docs/MOVIMENTO_7.md (bug do Google Translate). -->
+<html lang="pt-PT" translate="no">
   <head>
     <meta charset="UTF-8" />
+    <meta name="google" content="notranslate" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ui-web</title>
-    <link rel="stylesheet" href="./src/output.css">
+    <title>Architect &amp; Engineer</title>
   </head>
   <body>
     <div id="root"></div>

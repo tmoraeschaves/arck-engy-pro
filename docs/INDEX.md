@@ -24,18 +24,20 @@ peça de portefólio para ganhar credibilidade em arquitectura de sistemas. Vect
 5. **Envelopar** — README (não existe), LICENSE (0 bytes), CONTRIBUTING, demo pública
 6. **Anatomia como módulos** + camadas de arquitectura limpa aplicadas ao próprio código
 
-## Visão da integração ADS (descrita por Tiago 2026-08-31 — NÃO confirmada, a validar antes de executar)
+## Visão da integração — vista explodida (confirmada 2026-09-05, ver DEC-013 + `MOVIMENTO_8.md`)
 
 - **ARCK = o motor montado, visto em blocos.** As 5 camadas, os sectores, as ligações. O esboço macro.
-- **ADS dentro do ARCK = a vista explodida.** Clicar num bloco abre-o: cada peça puxada para fora,
-  alinhada, etiquetada — *o que é*, *o que faz*, *onde encaixa*, *a que se liga*. Cada peça pode
-  ela própria explodir. **Camadas dentro de camadas**, como o diagrama de um motor desmontado.
-- Os **6 módulos M0–M5** da Anatomia são os níveis da explosão — dão fim ao zoom, não é infinito.
-- **Implicações:** (1) torna o Movimento 7 obrigatório — não se constrói canvas recursivo sobre
-  monólito; (2) decisão de domínio nova — o modelo `No`/`Ligacao`/`Camada` é plano, precisa de
-  aninhamento (um nó contém o seu próprio diagrama), a desenhar no `packages/core` com contrato+testes;
-  (3) risco de explosão infinita — os 6 gates são a régua de paragem.
-- Pendente: gravar isto como `docs/VISAO.md` quando Tiago confirmar/corrigir.
+- **A vista explodida = abrir um bloco.** Cada nó guarda uma lista dos módulos/funções que lhe
+  cabem — *o que é*, *o que faz*, *onde encaixa*. Qualquer módulo pode ele próprio explodir num
+  mini-diagrama. **Camadas dentro de camadas**, com **limite de 3 níveis** (não é infinito).
+- **Um modelo de dados, um painel:** o `Modulo` (`id`/`label`/`kind`/`nota`/`filho`) é o mesmo
+  em Guiado e em Livre, e o painel de módulos também. Em ambos, o nó começa vazio e o utilizador
+  escreve os seus módulos. A distinção Guiado vs. Livre é só a validação de fluxo L1→L5.
+  *(DEC-014, 2026-09-06: o template de arranque M0–M5 foi abandonado — M0–M5 é processo, não
+  camada.)*
+- **Estado:** Fatia 1 (modelo + reducer) e Fatia 2a (painel lateral de módulos) **feitas**
+  (branch `mov7-fatia5`, ainda não em `main`). Fatia 2b **cancelada**. Próxima: Fatia 3
+  (`PROMOVER_MODULO` / sub-diagramas) — ver `docs/MOVIMENTO_8.md`.
 
 ## Estado actual (2026-08-31)
 
@@ -72,11 +74,12 @@ Por fazer (o "envelope" — bloqueia o "abrir"):
   - `EV-18 - Dominio isolado (RL-02)`
   - `Build de Producao (RL-23)`
 
-## Licenciamento (a decidir)
+## Licenciamento — rascunho escrito, por confirmar
 
-Peça de portefólio → a atribuição é o objectivo. Proposta:
-- **Código** (`packages/`): MIT ou Apache-2.0
-- **Método** (`docs/fundacao/`): CC BY 4.0 — quem usa tem de creditar Tiago Moraes Chaves
+Peça de portefólio → a atribuição é o objectivo. Ficheiros já escritos, **ainda por o Tiago
+confirmar** (repo continua privado, nada disto tem efeito até abrir):
+- **Código**: `LICENSE` na raiz — MIT. `package.json` actualizado (era `UNLICENSED`)
+- **Método** (`docs/fundacao/`): `docs/fundacao/LICENSE` — CC BY 4.0, crédito a Tiago Moraes Chaves
 - Prova de autoria e anterioridade: o próprio histórico de git (commits autorados e datados)
 
 ## Verificação rápida

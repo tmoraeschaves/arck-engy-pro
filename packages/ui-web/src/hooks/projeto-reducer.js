@@ -10,6 +10,11 @@
  * As acções que criam entidades recebem a entidade já formada (com id) —
  * o reducer mantém-se puro e determinístico (ver testes/projeto-reducer.test.mjs).
  * O `id`/`createdAt` são gerados por quem despacha.
+ *
+ * MÓDULOS (Movimento 8, DEC-013): um nó pode ter `modules: Modulo[]` — a lista de
+ * módulos/funções que lhe cabem. Campo opcional; ausente = sem módulos.
+ *   Modulo = { id, label, kind?, nota?, filho?: Diagrama | null }
+ * `filho` (promoção a mini-diagrama) é matéria da Fatia 3 — aqui a lista é plana.
  */
 import { toNo, toLigacoes, validarNovaLigacao } from "../lib/core-bridge.js";
 
@@ -21,6 +26,7 @@ export const estadoInicial = {
   customColors: {},
   bgImage: null,
   bgOpacity: 0.3,
+  bgLocked: false,
   sector: null,
   freeMode: false,
 };
@@ -35,6 +41,7 @@ export function snapshot(estado) {
     customColors: estado.customColors,
     bgImage: estado.bgImage,
     bgOpacity: estado.bgOpacity,
+    bgLocked: estado.bgLocked,
     sector: estado.sector,
     freeMode: estado.freeMode,
   };
@@ -69,31 +76,93 @@ export function projetoReducer(estado, accao) {
         customColors: p.customColors || {},
         bgImage: p.bgImage || estado.bgImage,
         bgOpacity: p.bgOpacity ?? estado.bgOpacity,
+        bgLocked: p.bgLocked ?? estado.bgLocked,
         sector: p.sector || estado.sector,
         freeMode: p.freeMode ?? estado.freeMode,
       };
     }
 
     case "RESETAR":
-      // limpa o diagrama e o fundo; mantém sector, modo, cores, opacidade
-      return { ...estado, nodes: [], connections: [], shapes: [], annotations: [], bgImage: null };
+      // limpa o diagrama; o fundo só se limpa se não estiver trancado (RL de segurança:
+      // um esboço-guia trancado sobrevive ao reset). Mantém sector, modo, cores, opacidade.
+      return {
+        ...estado, nodes: [], connections: [], shapes: [], annotations: [],
+        bgImage: estado.bgLocked ? estado.bgImage : null,
+      };
 
     // ── nós ─────────────────────────────────────────────────────────────────
     case "ADICIONAR_NO":
       return { ...estado, nodes: [...estado.nodes, accao.no] };
 
-    case "REMOVER_NO":
+    case "REMOVER_NO": {
+      // nó trancado é intocável — a guarda vive aqui para nenhum caminho da UI
+      // (botão direito, tecla Delete, futuro) o conseguir apagar por engano.
+      if (estado.nodes.find(n => n.id === accao.id)?.locked) return estado;
       return {
         ...estado,
         nodes: estado.nodes.filter(n => n.id !== accao.id),
         connections: estado.connections.filter(c => c.sourceId !== accao.id && c.targetId !== accao.id),
       };
+    }
 
-    case "MOVER_NO":
+    case "MOVER_NO": {
+      if (estado.nodes.find(n => n.id === accao.id)?.locked) return estado;
       return {
         ...estado,
         nodes: estado.nodes.map(n => n.id === accao.id ? { ...n, x: accao.x, y: accao.y } : n),
       };
+    }
+
+    case "ALTERNAR_TRAVA_NO":
+      return {
+        ...estado,
+        nodes: estado.nodes.map(n => n.id === accao.id ? { ...n, locked: !n.locked } : n),
+      };
+
+    // ── módulos dentro de um nó (Movimento 8) ───────────────────────────────
+    case "ADICIONAR_MODULO": {
+      if (!estado.nodes.some(n => n.id === accao.noId)) return estado;
+      return {
+        ...estado,
+        nodes: estado.nodes.map(n => n.id === accao.noId
+          ? { ...n, modules: [...(n.modules || []), accao.modulo] }
+          : n),
+      };
+    }
+
+    case "EDITAR_MODULO": {
+      const { noId, moduloId, patch } = accao;
+      const so = ({ label, kind, nota }) => ({ label, kind, nota }); // nunca id nem filho
+      const campos = Object.fromEntries(Object.entries(so(patch)).filter(([, v]) => v !== undefined));
+      return {
+        ...estado,
+        nodes: estado.nodes.map(n => n.id === noId
+          ? { ...n, modules: (n.modules || []).map(m => m.id === moduloId ? { ...m, ...campos } : m) }
+          : n),
+      };
+    }
+
+    case "REMOVER_MODULO": {
+      const { noId, moduloId } = accao;
+      return {
+        ...estado,
+        nodes: estado.nodes.map(n => n.id === noId
+          ? { ...n, modules: (n.modules || []).filter(m => m.id !== moduloId) }
+          : n),
+      };
+    }
+
+    case "MOVER_MODULO": {
+      const { noId, moduloId, direccao } = accao; // direccao: -1 (cima) | +1 (baixo)
+      const no = estado.nodes.find(n => n.id === noId);
+      if (!no || !no.modules) return estado;
+      const i = no.modules.findIndex(m => m.id === moduloId);
+      const j = i + direccao;
+      if (i < 0 || j < 0 || j >= no.modules.length) return estado; // nos limites: no-op
+      const mods = [...no.modules];
+      [mods[i], mods[j]] = [mods[j], mods[i]];
+      return { ...estado, nodes: estado.nodes.map(n => n.id === noId ? { ...n, modules: mods } : n) };
+    }
 
     case "ESCALAR_LAYOUT": {
       if (!estado.nodes.length) return estado;
@@ -132,17 +201,29 @@ export function projetoReducer(estado, accao) {
     case "ADICIONAR_FORMA":
       return { ...estado, shapes: [...estado.shapes, accao.forma] };
 
-    case "MOVER_FORMA":
+    case "MOVER_FORMA": {
+      if (estado.shapes.find(s => s.id === accao.id)?.locked) return estado;
       return { ...estado, shapes: estado.shapes.map(s => s.id === accao.id ? { ...s, x: accao.x, y: accao.y } : s) };
+    }
 
-    case "REDIMENSIONAR_FORMA":
+    case "REDIMENSIONAR_FORMA": {
+      if (estado.shapes.find(s => s.id === accao.id)?.locked) return estado;
       return {
         ...estado,
         shapes: estado.shapes.map(s => s.id === accao.id ? { ...s, x: accao.x, y: accao.y, w: accao.w, h: accao.h } : s),
       };
+    }
 
-    case "REMOVER_FORMA":
+    case "REMOVER_FORMA": {
+      if (estado.shapes.find(s => s.id === accao.id)?.locked) return estado;
       return { ...estado, shapes: estado.shapes.filter(s => s.id !== accao.id) };
+    }
+
+    case "ALTERNAR_TRAVA_FORMA":
+      return {
+        ...estado,
+        shapes: estado.shapes.map(s => s.id === accao.id ? { ...s, locked: !s.locked } : s),
+      };
 
     // ── anotações ───────────────────────────────────────────────────────────
     case "ADICIONAR_ANOTACAO":
@@ -150,6 +231,9 @@ export function projetoReducer(estado, accao) {
 
     case "EDITAR_ANOTACAO":
       return { ...estado, annotations: estado.annotations.map(a => a.id === accao.id ? { ...a, text: accao.text } : a) };
+
+    case "DEFINIR_COR_ANOTACAO":
+      return { ...estado, annotations: estado.annotations.map(a => a.id === accao.id ? { ...a, cor: accao.cor } : a) };
 
     case "ALTERNAR_ANOTACAO":
       return { ...estado, annotations: estado.annotations.map(a => a.id === accao.id ? { ...a, expanded: !a.expanded } : a) };
@@ -171,10 +255,16 @@ export function projetoReducer(estado, accao) {
       return { ...estado, customColors: {} };
 
     case "DEFINIR_FUNDO":
+      // trancado: intocável até destrancar — nem remover (img=null) nem substituir
+      // por outra imagem (colar/arrastar/carregar). O Arquitecto quis "trancar" = fechar.
+      if (estado.bgLocked) return estado;
       return { ...estado, bgImage: accao.img };
 
     case "DEFINIR_OPACIDADE_FUNDO":
       return { ...estado, bgOpacity: accao.opacidade };
+
+    case "ALTERNAR_BLOQUEIO_FUNDO":
+      return { ...estado, bgLocked: !estado.bgLocked };
 
     // ── sector + modo ───────────────────────────────────────────────────────
     case "DEFINIR_SECTOR":

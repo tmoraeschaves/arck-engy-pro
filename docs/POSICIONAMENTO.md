@@ -19,9 +19,9 @@ te avisa. Aqui, em modo guiado, uma ligação inválida **não se consegue traç
 ferramenta conhece as regras das camadas e não te deixa quebrá-las.
 
 Junto ao desenho: mede o estado do diagrama (repouso / guiado / livre-correcto / erro),
-descreve o fluxo em texto automaticamente, adapta o vocabulário das camadas a sete
-sectores (engenharia, computação, negócios, medicina, logística, cibersegurança, educação),
-e explica *porquê* quando algo está errado.
+descreve o fluxo em texto automaticamente, adapta o vocabulário das camadas a 12 sectores
+(engenharia, computação, negócios, medicina, logística, cibersegurança, educação, redes,
+nuvem, eléctrica, hidráulica, mecatrónica), e explica *porquê* quando algo está errado.
 
 ## 2. POR QUÊ
 

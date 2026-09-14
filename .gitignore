@@ -32,6 +32,11 @@ arck_project_*.json
 .cache/
 .vite/
 
+# Scripts temporários de verificação (driver de browser, etc.) — não são código-fonte
+/_*.mjs
+/_*.js
+/.cache-chrome-*
+
 # Claude Code (dados de sessão locais — não são código-fonte)
 .claude/
 

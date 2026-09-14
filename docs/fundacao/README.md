@@ -7,6 +7,9 @@ O método é aberto e é a espinha dorsal desta ferramenta — um projecto que m
 em código auditável, como se constrói software sem monólitos.
 Ver `docs/DECISOES.md` para o registo das decisões.
 
+**Licença:** este conteúdo (não o código do repositório) está sob CC BY 4.0 — ver `LICENSE`
+nesta pasta.
+
 ## `metodo/` — a fundação de engenharia
 
 | Ficheiro | O que é |

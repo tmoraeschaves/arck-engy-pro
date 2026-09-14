@@ -1,16 +1,15 @@
 import React, { useState, useReducer, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   RotateCcw, Download, Upload, Shield, X, Scissors,
-  Lock, Unlock, Bell, BellOff, Image, Shapes, FileText,
-  Type, ChevronDown, ChevronUp, FileImage, Save, Trash2,
+  Bell, BellOff, Image, Shapes, FileText,
+  Type, ChevronDown, ChevronUp, FileImage, Trash2,
   ZoomIn, ZoomOut, Grid, Layers, Menu, Box,
-  BookmarkPlus, GripHorizontal, List, Maximize2, Minimize2, Rotate3d
+  BookmarkPlus, GripHorizontal, List, Rotate3d
 } from "lucide-react";
 
 import { uid } from "./lib/uid.js";
-import { LAYERS, LAYER_KEYS } from "./config/camadas.jsx";
+import { LAYERS, LAYER_KEYS } from "./config/camadas.js";
 import { SECTORS } from "./config/sectores.js";
-import { GEO_SHAPES } from "./config/formas.js";
 import { TEMPLATES } from "./config/templates.js";
 import { TUTORIAL_STEPS } from "./config/tutorial.js";
 import { METRICS, GRID_SIZE, LIMITE_3D } from "./config/app-meta.js";
@@ -20,36 +19,48 @@ import {
 } from "./lib/core-bridge.js";
 import { computeFlowReport } from "./lib/flow-report.js";
 import {
-  guardarProjetoLocal, apagarProjetoLocal, descarregarProjeto, lerFicheiroJSON,
-  lerModelos, guardarModelos, guardarSectorLocal,
+  guardarProjetoLocal, autoguardarProjetoLocal, lerProjetoLocal, apagarProjetoLocal,
+  descarregarProjeto, lerFicheiroJSON, lerModelos, guardarModelos, guardarSectorLocal,
 } from "./infra/persistencia.js";
 import { construirSVG, exportarSVG, exportarPNG } from "./infra/exportar.js";
-import { ShapeElements, ShapePreview } from "./componentes/FormasSVG.jsx";
+import { Canvas } from "./componentes/Canvas.jsx";
+import { PainelModulos } from "./componentes/PainelModulos.jsx";
+import { IconeCamada } from "./componentes/IconeCamada.jsx";
 import { projetoReducer, estadoInicial, snapshot } from "./hooks/projeto-reducer.js";
+import { useVistaCanvas } from "./hooks/useVistaCanvas.js";
+import { useAtalhos } from "./hooks/useAtalhos.js";
+import { useColarImagem } from "./hooks/useColarImagem.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
   // ── documento (nós, ligações, formas, anotações, cores, fundo, sector, modo) ──
-  const [projeto, dispatch] = useReducer(projetoReducer, undefined, () => ({
-    ...estadoInicial,
-    sector: localStorage.getItem("ae_sector") || null,
-  }));
-  const { nodes, connections, shapes, annotations, customColors, bgImage, bgOpacity, sector, freeMode } = projeto;
+  // Arranca do autosave (recupera onde o utilizador parou ao reabrir/actualizar);
+  // se não houver, começa vazio com o último sector escolhido.
+  const [projeto, dispatch] = useReducer(projetoReducer, undefined, () => {
+    const guardado = lerProjetoLocal();
+    if (guardado) return { ...estadoInicial, ...guardado };
+    return { ...estadoInicial, sector: localStorage.getItem("ae_sector") || null };
+  });
+  const { nodes, connections, shapes, annotations, customColors, bgImage, bgOpacity, bgLocked, sector, freeMode } = projeto;
 
   // ── estado de interacção efémero ──────────────────────────────────────────
+  const {
+    zoom, setZoom, offset, setOffset, isPanning, setIsPanning, panStart, setPanStart,
+    is3D, setIs3D, rotX, setRotX, rotY, setRotY, rotZ, setRotZ,
+    draggingRot, setDraggingRot, show3DPanel, setShow3DPanel,
+    panel3DPos, setPanel3DPos, dragging3DPanel, setDragging3DPanel,
+    centro3D,
+  } = useVistaCanvas(nodes);
+
   const [selectedNode, setSelectedNode] = useState(null);
+  const [modulosNoId, setModulosNoId] = useState(null);
   const [draggingNode, setDraggingNode] = useState(null);
   const [hoveredNode, setHoveredNode] = useState(null);
   const [cutMode, setCutMode] = useState(false);
   const [cutStart, setCutStart] = useState(null);
   const [cutEnd, setCutEnd] = useState(null);
-  const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [snapToGrid, setSnapToGrid] = useState(false);
-  const [lockNodes, setLockNodes] = useState(false);
-  const [showLabels] = useState(true); // sempre visível por agora — sem toggle na UI
+  const showLabels = true; // sempre visível por agora — sem toggle na UI
   const [showGrid, setShowGrid] = useState(false);
 
   // ── estados avançados ─────────────────────────────────────────────────────
@@ -59,8 +70,9 @@ export default function App() {
   const [showBgPanel, setShowBgPanel] = useState(false);
 
   // ── modais de arranque ────────────────────────────────────────────────────
-  const [showSectorModal, setShowSectorModal] = useState(() => !localStorage.getItem("ae_sector"));
-  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem("ae_tutorial") && !!localStorage.getItem("ae_sector"));
+  // Se o projecto foi recuperado do autosave já tem sector — não voltar a pedir.
+  const [showSectorModal, setShowSectorModal] = useState(() => !projeto.sector);
+  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem("ae_tutorial") && !!projeto.sector);
   const [tutorialStep, setTutorialStep] = useState(0);
 
   // ── formas geométricas (interacção efémera) ───────────────────────────────
@@ -87,18 +99,8 @@ export default function App() {
   // ── relatório de fluxo ────────────────────────────────────────────────────
   const [showFlowReport, setShowFlowReport] = useState(false);
 
-  // ── 3D rotation ───────────────────────────────────────────────────────────
-  const [is3D, setIs3D] = useState(false);
-  const [rotX, setRotX] = useState(0);
-  const [rotY, setRotY] = useState(0);
-  const [rotZ, setRotZ] = useState(0);
-  const [draggingRot, setDraggingRot] = useState(null); // {sx,sy,rx,ry}
-  const [show3DPanel, setShow3DPanel] = useState(false);
-  const [panel3DPos, setPanel3DPos] = useState({ x: 400, y: 70 });
-  const [dragging3DPanel, setDragging3DPanel] = useState(null);
-
-  // ── telemetria ────────────────────────────────────────────────────────────
-  const [systemLoad, setSystemLoad] = useState(0);
+  // ── pulso da animação das barras (só fase; a altura/cor vêm da integridade) ──
+  const [pulse, setPulse] = useState(0);
 
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -108,6 +110,7 @@ export default function App() {
   const activeSector = useMemo(() => sector ? SECTORS[sector] : SECTORS.engenharia, [sector]);
   const layerName  = useCallback(k => activeSector.names[k] || k, [activeSector]);
   const layerColor = useCallback(k => customColors[k] || LAYERS[k]?.color || "#666", [customColors]);
+  const modulosNo = useMemo(() => nodes.find(n => n.id === modulosNoId) || null, [nodes, modulosNoId]);
 
   const analysis = useMemo(() => {
     const conflicts = connections.filter(c => { const s=nodes.find(n=>n.id===c.sourceId),t=nodes.find(n=>n.id===c.targetId); return s&&t&&!isValidLink(s.layer,t.layer); }).length;
@@ -125,58 +128,30 @@ export default function App() {
 
   const flowReport = useMemo(() => computeFlowReport(nodes, connections), [nodes, connections]);
 
-  // Ponto de pivô do mundo 3D: centro do desenho em coordenadas de ecrã
-  // (para a inclinação girar à volta da estrutura, não do centro da janela).
-  const centro3D = useMemo(() => {
-    if (!nodes.length) return "center center";
-    const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
-    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
-    const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-    return `${cx * zoom + offset.x}px ${cy * zoom + offset.y}px`;
-  }, [nodes, zoom, offset]);
-
-  // ── telemetria FIX ────────────────────────────────────────────────────────
+  // As barras do cabeçalho eram uma "CARGA" inventada (podia passar dos 100%).
+  // Passam a mostrar a INTEGRIDADE: a altura e a cor vêm de `health`; este intervalo
+  // só faz a onda mexer (a fase), para continuarem visualmente vivas. Pára quando
+  // não há nada para medir.
   useEffect(() => {
-    if (!nodes.length) { setSystemLoad(0); return; }
-    const id = setInterval(() => {
-      setSystemLoad(30 + nodes.length*5 + connections.length*2 + Math.sin(Date.now()/900)*8 + Math.random()*2);
-    }, 120);
+    if (!nodes.length || !connections.length) return;
+    const id = setInterval(() => setPulse(p => (p + 0.35) % (Math.PI * 2)), 130);
     return () => clearInterval(id);
   }, [nodes.length, connections.length]);
 
-  // ── teclado ───────────────────────────────────────────────────────────────
+  // ── autosave — recupera onde o utilizador parou ao reabrir/actualizar ──────
+  // Grava o snapshot no localStorage a cada mudança, com um atraso de 500ms para
+  // não escrever a cada pixel durante um arrasto. `snapshot` é só o documento.
   useEffect(() => {
-    const onUp = () => {
-      if (cutMode && cutStart && cutEnd) cutConnections(cutStart, cutEnd);
-      setDraggingNode(null); setIsPanning(false); setDraggingShape(null);
-      setResizingShape(null); setDraggingLib(null);
-      setDraggingRot(null); setDragging3DPanel(null);
-      setCutMode(false); setCutStart(null); setCutEnd(null);
-    };
-    const onKey = (e) => {
-      if (e.key==="Escape") { setSelectedNode(null); setCutMode(false); setAnnotationMode(false); setEditingAnnotId(null); setPlacingShapeType(null); setShowShapePicker(false); setAllSelected(false); setIs3D(false); }
-      if (e.key==="a" && e.ctrlKey) { e.preventDefault(); setAllSelected(p=>!p); setSelectedNode(null); }
-      if (e.key==="Delete") {
-        if (selectedNode) removeNode(selectedNode.id);
-        if (selectedShapeId) { dispatch({ tipo:"REMOVER_FORMA", id:selectedShapeId }); setSelectedShapeId(null); }
-      }
-      if (e.key==="c" && !e.ctrlKey) { e.preventDefault(); setCutMode(true); }
-      if (e.key==="+"||e.key==="=") setZoom(p=>Math.min(p+0.1,3));
-      if (e.key==="-") setZoom(p=>Math.max(p-0.1,0.2));
-      if (e.key==="0") { setZoom(1); setOffset({x:0,y:0}); }
-    };
-    const onDown = (e) => {
-      if (cutMode && !cutStart && canvasRef.current) {
-        const r = canvasRef.current.getBoundingClientRect();
-        const p = { x:(e.clientX-r.left-offset.x)/zoom, y:(e.clientY-r.top-offset.y)/zoom };
-        setCutStart(p); setCutEnd(p);
-      }
-    };
-    window.addEventListener("mouseup", onUp);
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("mousedown", onDown);
-    return () => { window.removeEventListener("mouseup",onUp); window.removeEventListener("keydown",onKey); window.removeEventListener("mousedown",onDown); };
-  }, [cutMode, cutStart, cutEnd, selectedNode, selectedShapeId, zoom, offset]);
+    const id = setTimeout(() => autoguardarProjetoLocal(snapshot(projeto)), 500);
+    return () => clearTimeout(id);
+  }, [projeto]);
+
+  // Converte coordenadas de ecrã (clientX/Y) para coordenadas do canvas (aplica offset/zoom).
+  const paraCanvas = useCallback((clientX, clientY) => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    const r = canvasRef.current.getBoundingClientRect();
+    return { x: (clientX - r.left - offset.x) / zoom, y: (clientY - r.top - offset.y) / zoom };
+  }, [offset, zoom]);
 
   // ── mouse move (canvas + library drag) ───────────────────────────────────
   const handleMouseMove = useCallback((e) => {
@@ -215,7 +190,7 @@ export default function App() {
       dispatch({ tipo: "REDIMENSIONAR_FORMA", id: resizingShape.id, x, y, w, h });
       return;
     }
-    if (draggingNode && !lockNodes) {
+    if (draggingNode) {
       let x = cx, y = cy;
       if (snapToGrid) { x = Math.round(x/GRID_SIZE)*GRID_SIZE; y = Math.round(y/GRID_SIZE)*GRID_SIZE; }
       dispatch({ tipo: "MOVER_NO", id: draggingNode.id, x, y });
@@ -233,14 +208,19 @@ export default function App() {
     if (cutMode && cutStart) {
       setCutEnd({ x:cx, y:cy });
     }
-  }, [draggingLib, resizingShape, draggingNode, draggingShape, isPanning, cutMode, cutStart, zoom, offset, snapToGrid, lockNodes]);
+  }, [draggingLib, resizingShape, draggingNode, draggingShape, isPanning, cutMode, cutStart, zoom, offset, snapToGrid]);
 
   // ── nós ───────────────────────────────────────────────────────────────────
+  // Nasce à direita do centro da área visível (não amontoado no canto superior
+  // esquerdo), convertendo o ponto de ecrã para coordenadas do canvas (offset/zoom).
   const addNode = useCallback((layerKey) => {
-    let x = 200+Math.random()*250, y = 150+Math.random()*200;
+    const r = canvasRef.current?.getBoundingClientRect();
+    const jitter = () => (Math.random() - 0.5) * 130;
+    let x = r ? (r.width * 0.58 - offset.x) / zoom + jitter() : 480 + jitter();
+    let y = r ? (r.height * 0.44 - offset.y) / zoom + jitter() : 320 + jitter();
     if (snapToGrid) { x=Math.round(x/GRID_SIZE)*GRID_SIZE; y=Math.round(y/GRID_SIZE)*GRID_SIZE; }
     dispatch({ tipo: "ADICIONAR_NO", no: { id:`node_${uid()}`, layer:layerKey, x, y, createdAt:Date.now() } });
-  }, [snapToGrid]);
+  }, [snapToGrid, offset, zoom]);
 
   const removeNode = useCallback((id) => {
     dispatch({ tipo: "REMOVER_NO", id });
@@ -261,6 +241,11 @@ export default function App() {
     setSelectedNode(null);
   }, [selectedNode, connections, nodes, silentMode, freeMode, layerName]);
 
+  const abrirModulos = useCallback((node) => {
+    setSelectedNode(null);
+    setModulosNoId(node.id);
+  }, []);
+
   const cutConnections = useCallback((start,end) => {
     if (!start||!end) return;
     const len = Math.hypot(end.x-start.x,end.y-start.y); if (!len) return;
@@ -272,6 +257,18 @@ export default function App() {
     }).map(c => c.id);
     if (ids.length) dispatch({ tipo: "CORTAR_LIGACOES", ids });
   }, [connections, nodes, zoom]);
+
+  // ── atalhos globais (teclado + fim de arrasto) ────────────────────────────
+  useAtalhos({
+    cutMode, cutStart, cutEnd, selectedNode, selectedShapeId, zoom, offset, canvasRef,
+    cutConnections, removeNode, dispatch,
+    setDraggingNode, setIsPanning, setDraggingShape, setResizingShape, setDraggingLib,
+    setDraggingRot, setDragging3DPanel, setCutMode, setCutStart, setCutEnd,
+    setSelectedNode, setSelectedShapeId, setAnnotationMode, setEditingAnnotId,
+    setPlacingShapeType, setShowShapePicker, setAllSelected, setIs3D, setZoom, setOffset,
+  });
+
+  useColarImagem(dispatch);
 
   // ── escala de layout ──────────────────────────────────────────────────────
   const scaleLayout = useCallback((factor) => dispatch({ tipo: "ESCALAR_LAYOUT", fator: factor }), []);
@@ -328,6 +325,8 @@ export default function App() {
     }
   }, []);
 
+  const abrirImportador = useCallback(() => { fileInputRef.current?.click(); }, []);
+
   // ── exportação ────────────────────────────────────────────────────────────
   const buildSVG = useCallback(
     () => construirSVG({ nodes, connections, shapes, corDaCamada: layerColor, modoLivre: freeMode }),
@@ -359,7 +358,7 @@ export default function App() {
                 <button key={key} onClick={()=>selectSector(key)} className="p-4 rounded-lg border border-[#334155] hover:border-emerald-500 hover:bg-[#0F2D21] text-center transition-all group cursor-pointer">
                   <div className="text-2xl mb-2">{s.icon}</div>
                   <div className="text-[11px] font-black text-white group-hover:text-emerald-400">{s.name}</div>
-                  <div className="text-[8px] text-slate-400 mt-1">{Object.values(s.names).slice(0,3).join("·")}</div>
+                  <div className="text-[8px] text-slate-400 mt-1 leading-tight break-words">{Object.values(s.names).slice(0,2).join(" · ")}</div>
                 </button>
               ))}
             </div>
@@ -417,7 +416,7 @@ export default function App() {
           {/* export */}
           <div className="flex gap-1 border-l border-[#334155] pl-3 flex-shrink-0">
             {[
-              {icon:<Upload size={14}/>,   fn:()=>fileInputRef.current.click(), tip:"Importar JSON"},
+              {icon:<Upload size={14}/>,   fn:abrirImportador,                   tip:"Importar JSON"},
               {icon:<Download size={14}/>, fn:saveProject,                       tip:"Exportar JSON"},
               {icon:<Shapes size={14}/>,   fn:exportSVG,                         tip:"Exportar SVG"},
               {icon:<FileImage size={14}/>,fn:exportPNG,                          tip:"Exportar PNG"},
@@ -432,20 +431,27 @@ export default function App() {
             <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={loadProject}/>
           </div>
 
-          {/* telemetria */}
-          {nodes.length > 0 && (
-            <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-              <div className="flex flex-col items-end">
-                <span className="text-[8px] font-bold text-white/75">CARGA</span>
-                <span className="text-sm font-black text-emerald-400">{Math.round(systemLoad)}%</span>
+          {/* barras de integridade — altura e cor vêm de `health`; a onda só anima */}
+          {nodes.length > 0 && (() => {
+            const inercia = estadoTensao === "INERCIA";
+            const frac = inercia ? 0.16 : Math.max(0, health) / 100;
+            const amp = inercia ? 0.5 : frac; // erro (frac 0) fica parado; inércia mexe pouco
+            return (
+              <div className="flex items-center gap-2 ml-auto flex-shrink-0" title={`Integridade: ${displayTensao(health, estadoTensao)}`}>
+                <div className="flex flex-col items-end">
+                  <span className="text-[8px] font-bold text-white/75">INTEGRIDADE</span>
+                  <span className="text-sm font-black" style={{color:healthColor}}>{displayTensao(health, estadoTensao)}</span>
+                </div>
+                <div className="flex gap-0.5 h-7 items-end">
+                  {Array.from({length:12}).map((_,i)=>{
+                    const h = Math.min(100, Math.max(6, frac*66 + Math.sin(pulse + i*0.7)*15*amp + i*2*frac));
+                    return <div key={i} className="rounded-sm transition-all duration-150"
+                      style={{width:3, background:healthColor, opacity:0.45 + i*0.045, height:`${h}%`}}/>;
+                  })}
+                </div>
               </div>
-              <div className="flex gap-0.5 h-7 items-end">
-                {Array.from({length:12}).map((_,i)=>(
-                  <div key={i} className="rounded-sm transition-all duration-150"
-                    style={{width:3,background:`hsl(${150+i*3},65%,${45+i*2}%)`,height:`${Math.max(6,systemLoad*0.55+Math.sin(systemLoad*0.08+i*0.9)*18+i*1.5)}%`}}/>
-                ))}
-              </div>
-            </div>
+            );
+          })()}
           )}
 
           {/* brand */}
@@ -467,7 +473,7 @@ export default function App() {
               title={`Adicionar ${layerName(key)}`}
               className="relative w-9 h-9 rounded-lg flex flex-col items-center justify-center border transition-all"
               style={{borderColor:layerColor(key)+"80",background:layerColor(key)+"18"}}>
-              <span style={{color:layerColor(key)}}>{LAYERS[key].icon}</span>
+              <span style={{color:layerColor(key)}}><IconeCamada sector={sector} camada={key} size={18} /></span>
               <span className="text-[5px] font-black" style={{color:layerColor(key)}}>{key}</span>
               {hoveredNode===key && (
                 <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-[#0F172A] border border-[#334155] text-[9px] px-2 py-1 rounded-md whitespace-nowrap z-50 shadow-xl pointer-events-none">
@@ -498,7 +504,6 @@ export default function App() {
           {[
             {icon:<Grid size={14}/>,fn:()=>setShowGrid(p=>!p),active:showGrid,tip:"Grade de Pontos"},
             {icon:<Layers size={14}/>,fn:()=>setSnapToGrid(p=>!p),active:snapToGrid,tip:"Snap à Grade"},
-            {icon:lockNodes?<Lock size={14}/>:<Unlock size={14}/>,fn:()=>setLockNodes(p=>!p),active:lockNodes,tip:"Travar Nós"},
             {icon:silentMode?<BellOff size={14}/>:<Bell size={14}/>,fn:()=>setSilentMode(p=>!p),active:silentMode,tip:"Modo Silencioso"},
           ].map((t,i)=>(
             <button key={i} onClick={t.fn} title={t.tip}
@@ -536,227 +541,35 @@ export default function App() {
         </aside>
 
         {/* CANVAS */}
-        <main ref={canvasRef}
-          className={`flex-1 relative overflow-hidden ${annotationMode||placingShapeType?"cursor-crosshair":""}`}
-          style={{background:"#FAFAFA"}}
-          onContextMenu={(e)=>{ if(is3D) e.preventDefault(); }}
-          onMouseDown={(e)=>{
-            // 3D right-click drag
-            if (is3D && e.button===2) { e.preventDefault(); setDraggingRot({sx:e.clientX,sy:e.clientY,rx:rotX,ry:rotY}); return; }
-            if (is3D) return; // block all edit interactions in 3D mode
-            if ((annotationMode||placingShapeType)&&e.button===0&&canvasRef.current) {
-              const r=canvasRef.current.getBoundingClientRect();
-              const cx=(e.clientX-r.left-offset.x)/zoom, cy=(e.clientY-r.top-offset.y)/zoom;
-              if (annotationMode){addAnnotation(cx,cy);setAnnotationMode(false);}
-              else {placeShape(cx,cy);}
-              e.stopPropagation(); return;
-            }
-            if (e.button===1||(e.button===0&&e.altKey)){setIsPanning(true);setPanStart({x:e.clientX,y:e.clientY});}
-            if (e.button===0&&!annotationMode&&!placingShapeType){setAllSelected(false);setSelectedShapeId(null);}
-          }}
-          onWheel={(e)=>{e.preventDefault();setZoom(p=>Math.max(0.2,Math.min(3,p-e.deltaY*0.001)));}}
-        >
-          {/* ── 3D WORLD (rotates) ─────────────────────────────────────── */}
-          <div style={{
-            position:"absolute", inset:0,
-            transform: is3D ? `perspective(1200px) rotateX(${rotX}deg) rotateY(${rotY}deg) rotateZ(${rotZ}deg)` : "none",
-            transformOrigin: is3D ? centro3D : "center center",
-            transformStyle: "preserve-3d",
-            willChange: is3D ? "transform" : "auto",
-            transition: draggingRot ? "none" : "transform 0.18s ease",
-            cursor: is3D ? (draggingRot ? "grabbing" : "grab") : undefined,
-          }}>
+        <Canvas
+          canvasRef={canvasRef} bgInputRef={bgInputRef}
+          nodes={nodes} connections={connections} shapes={shapes} annotations={annotations}
+          bgImage={bgImage} bgOpacity={bgOpacity} bgLocked={bgLocked} freeMode={freeMode} silentMode={silentMode} sector={sector}
+          zoom={zoom} offset={offset} is3D={is3D} rotX={rotX} rotY={rotY} rotZ={rotZ}
+          draggingRot={draggingRot} centro3D={centro3D}
+          setZoom={setZoom} setIsPanning={setIsPanning} setPanStart={setPanStart}
+          setDraggingRot={setDraggingRot} setIs3D={setIs3D}
+          selectedNode={selectedNode} setSelectedNode={setSelectedNode}
+          selectedShapeId={selectedShapeId} setSelectedShapeId={setSelectedShapeId}
+          allSelected={allSelected} setAllSelected={setAllSelected}
+          editingAnnotId={editingAnnotId} setEditingAnnotId={setEditingAnnotId}
+          annotationMode={annotationMode} setAnnotationMode={setAnnotationMode}
+          placingShapeType={placingShapeType} setPlacingShapeType={setPlacingShapeType}
+          showShapePicker={showShapePicker} setShowShapePicker={setShowShapePicker}
+          cutMode={cutMode} cutStart={cutStart} cutEnd={cutEnd} showGrid={showGrid}
+          showBgPanel={showBgPanel} setShowBgPanel={setShowBgPanel}
+          showLabels={showLabels}
+          setDraggingNode={setDraggingNode} setDraggingShape={setDraggingShape} setResizingShape={setResizingShape}
+          dispatch={dispatch} addAnnotation={addAnnotation} placeShape={placeShape} scaleLayout={scaleLayout}
+          connectNodes={connectNodes} removeNode={removeNode} abrirModulos={abrirModulos}
+          layerName={layerName} layerColor={layerColor} paraCanvas={paraCanvas}
+        />
 
-          {bgImage && <img src={bgImage} alt="bg" className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-            style={{opacity:bgOpacity,transform:`translate(${offset.x}px,${offset.y}px) scale(${zoom})`,transformOrigin:"0 0"}}/>}
-
-          {showGrid && <div className="absolute inset-0 pointer-events-none" style={{backgroundImage:`radial-gradient(circle,#CBD5E1 1px,transparent 1px)`,backgroundSize:`${GRID_SIZE*zoom}px ${GRID_SIZE*zoom}px`,backgroundPosition:`${offset.x}px ${offset.y}px`,opacity:0.5}}/>}
-
-          {/* Ctrl+A scale bar */}
-          {allSelected && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 bg-[#1E293B] border border-[#334155] rounded-full shadow-xl px-5 py-2 flex items-center gap-4">
-              <span className="text-[9px] font-bold text-white/70 uppercase tracking-wider">Escala do Layout</span>
-              <button onClick={()=>scaleLayout(0.8)} className="w-7 h-7 rounded-full bg-[#334155] text-white text-sm font-bold hover:bg-slate-500 flex items-center justify-center">−</button>
-              <span className="text-[10px] text-slate-300 w-20 text-center">{nodes.length} nós selec.</span>
-              <button onClick={()=>scaleLayout(1.2)} className="w-7 h-7 rounded-full bg-[#334155] text-white text-sm font-bold hover:bg-slate-500 flex items-center justify-center">+</button>
-              <button onClick={()=>setAllSelected(false)} className="text-[9px] text-slate-400 hover:text-slate-200 ml-2">ESC</button>
-            </div>
-          )}
-
-          {/* fundo panel */}
-          {showBgPanel && (
-            <div className="absolute top-3 right-3 z-40 bg-[#1E293B] border border-[#334155] p-4 w-56 rounded-xl shadow-2xl">
-              <div className="flex justify-between items-center mb-3"><span className="text-[11px] font-bold text-white">Plano de Fundo</span><button onClick={()=>setShowBgPanel(false)} className="text-slate-400 hover:text-white"><X size={14}/></button></div>
-              <button onClick={()=>bgInputRef.current.click()} className="w-full mb-2 py-2 bg-emerald-700 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-600">CARREGAR IMAGEM</button>
-              <input type="file" ref={bgInputRef} className="hidden" accept="image/*" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>dispatch({tipo:"DEFINIR_FUNDO",img:ev.target.result});r.readAsDataURL(f);}}/>
-              {bgImage&&(<><div className="mb-2"><div className="text-[9px] font-bold text-slate-400 mb-1">OPACIDADE: {Math.round(bgOpacity*100)}%</div><input type="range" min="0.05" max="1" step="0.05" value={bgOpacity} onChange={e=>dispatch({tipo:"DEFINIR_OPACIDADE_FUNDO",opacidade:parseFloat(e.target.value)})} className="w-full accent-emerald-500"/></div><button onClick={()=>dispatch({tipo:"DEFINIR_FUNDO",img:null})} className="w-full py-1 border border-red-700 text-red-400 text-[10px] font-bold rounded-lg hover:bg-red-900/20">REMOVER</button></>)}
-            </div>
-          )}
-
-          {/* shape picker */}
-          {showShapePicker && (
-            <div className="absolute top-3 left-3 z-40 bg-[#1E293B] border border-[#334155] rounded-xl shadow-2xl w-76 overflow-hidden">
-              <div className="flex justify-between items-center px-4 py-3 border-b border-[#334155]">
-                <span className="text-[11px] font-bold text-white">Formas Geométricas</span>
-                <button onClick={()=>{setShowShapePicker(false);setPlacingShapeType(null);}} className="text-slate-400 hover:text-white"><X size={14}/></button>
-              </div>
-              {["Sólidos","Poliedros","Prismas","Curvos","Especiais"].map(group=>{
-                const gs=GEO_SHAPES.filter(s=>s.group===group); if(!gs.length) return null;
-                return (<div key={group} className="p-3">
-                  <div className="text-[8px] font-bold text-slate-300 uppercase tracking-wider mb-2">{group}</div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {gs.map(s=>(
-                      <button key={s.id} onClick={()=>{setPlacingShapeType(s.id);setShowShapePicker(false);}} title={s.name}
-                        className={`flex flex-col items-center p-1 rounded-lg border transition-all hover:border-emerald-500 hover:bg-emerald-900/20
-                          ${placingShapeType===s.id?"border-emerald-500 bg-emerald-900/30":"border-[#334155] bg-[#0F172A]"}`}>
-                        <ShapePreview shape={s} size={44}/>
-                        <span className="text-[7px] text-slate-200 text-center leading-tight mt-0.5">{s.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>);
-              })}
-            </div>
-          )}
-
-          {/* SVG layer */}
-          <svg className="absolute inset-0 w-full h-full" style={{transformOrigin:"0 0",pointerEvents:"none"}}>
-            <g transform={`translate(${offset.x},${offset.y}) scale(${zoom})`} style={{pointerEvents:"all"}}>
-
-              {/* Formas com resize handles */}
-              {shapes.map(sh=>{
-                const def=GEO_SHAPES.find(s=>s.id===sh.type); if(!def) return null;
-                const isSel=selectedShapeId===sh.id;
-                const corners = isSel ? [
-                  {id:"tl",cx:sh.x,    cy:sh.y,     cursor:"nw-resize"},
-                  {id:"tr",cx:sh.x+sh.w,cy:sh.y,    cursor:"ne-resize"},
-                  {id:"bl",cx:sh.x,    cy:sh.y+sh.h, cursor:"sw-resize"},
-                  {id:"br",cx:sh.x+sh.w,cy:sh.y+sh.h,cursor:"se-resize"},
-                ] : [];
-                return (
-                  <g key={sh.id}>
-                    {isSel && <rect x={sh.x-3} y={sh.y-3} width={sh.w+6} height={sh.h+6} fill="none" stroke="#60A5FA" strokeWidth="1" strokeDasharray="4,3" opacity="0.6" rx="4" style={{pointerEvents:"none"}}/>}
-                    <g onMouseDown={e=>{e.stopPropagation();setSelectedShapeId(sh.id);const r=canvasRef.current.getBoundingClientRect();const cx2=(e.clientX-r.left-offset.x)/zoom,cy2=(e.clientY-r.top-offset.y)/zoom;setDraggingShape({id:sh.id,ox:cx2-sh.x,oy:cy2-sh.y});}} onContextMenu={e=>{e.preventDefault();dispatch({tipo:"REMOVER_FORMA",id:sh.id});setSelectedShapeId(null);}} style={{cursor:"move",pointerEvents:"all"}}>
-                      <ShapeElements shape={def} x={sh.x} y={sh.y} w={sh.w} h={sh.h} selected={isSel}/>
-                    </g>
-                    {corners.map(c=>(
-                      <rect key={c.id} x={c.cx-5} y={c.cy-5} width={10} height={10} fill="white" stroke="#60A5FA" strokeWidth="1.5" rx="2"
-                        style={{cursor:c.cursor,pointerEvents:"all"}}
-                        onMouseDown={e=>{e.stopPropagation();setResizingShape({id:sh.id,corner:c.id,ox:sh.x,oy:sh.y,ow:sh.w,oh:sh.h,mx:e.clientX,my:e.clientY});}}/>
-                    ))}
-                  </g>
-                );
-              })}
-
-              {/* Cut line */}
-              {cutMode&&cutStart&&cutEnd&&<line x1={cutStart.x} y1={cutStart.y} x2={cutEnd.x} y2={cutEnd.y} stroke="#EF4444" strokeWidth="2.5" strokeDasharray="10,8" style={{pointerEvents:"none"}}/>}
-
-              {/* Conexões */}
-              <defs>
-                <marker id="arr-ok"   viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#10B981"/></marker>
-                <marker id="arr-err"  viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#EF4444"/></marker>
-                <marker id="arr-free" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#F59E0B"/></marker>
-                <marker id="arr-mute" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
-              </defs>
-
-              {connections.map(conn=>{
-                const src=nodes.find(n=>n.id===conn.sourceId),tgt=nodes.find(n=>n.id===conn.targetId); if(!src||!tgt) return null;
-                const valid=isValidLink(src.layer,tgt.layer);
-                const isRet=src.layer==="L5"&&tgt.layer==="L2";
-                const clr=silentMode?"#475569":freeMode?"#F59E0B":valid?"#10B981":"#EF4444";
-                const mid=silentMode?"arr-mute":freeMode?"arr-free":valid?"arr-ok":"arr-err";
-                return (
-                  <g key={conn.id} style={{pointerEvents:"all"}}>
-                    <line x1={src.x} y1={src.y} x2={tgt.x} y2={tgt.y} stroke={clr} strokeWidth={isRet?2.5:1.8} strokeDasharray={isRet?"7,4":undefined} markerEnd={`url(#${mid})`} style={{pointerEvents:"none"}}/>
-                    <circle cx={(src.x+tgt.x)/2} cy={(src.y+tgt.y)/2} r={7} fill="#EF4444"
-                      className="opacity-0 hover:opacity-50 transition-opacity cursor-pointer"
-                      onClick={()=>dispatch({tipo:"DESLIGAR",id:conn.id})}/>
-                  </g>
-                );
-              })}
-
-              {/* Nós */}
-              {nodes.map(node=>{
-                const info=LAYERS[node.layer],isSel=selectedNode?.id===node.id,isAllSel=allSelected;
-                const color=layerColor(node.layer);
-                return (
-                  <g key={node.id} transform={`translate(${node.x-20},${node.y-20})`} style={{cursor:"move",pointerEvents:"all"}}
-                    onMouseDown={e=>{if(!lockNodes){e.stopPropagation();setDraggingNode(node);}}}
-                    onClick={e=>{e.stopPropagation();setSelectedShapeId(null);if(!allSelected){selectedNode?connectNodes(node.id):setSelectedNode(node);}}}
-                    onContextMenu={e=>{e.preventDefault();removeNode(node.id);}}>
-                    <rect width={40} height={40} rx={8} fill={isSel?"white":color}
-                      stroke={isSel||isAllSel?color:"transparent"} strokeWidth={isSel?2.5:isAllSel?1.5:0}
-                      style={{filter:isSel?`drop-shadow(0 0 8px ${color}80)`:isAllSel?`drop-shadow(0 0 4px ${color}60)`:`drop-shadow(0 2px 4px rgba(0,0,0,.3))`}}/>
-                    <g transform="translate(11,11)" style={{pointerEvents:"none"}}>{React.cloneElement(info.icon, { color: isSel ? color : "white" })}</g>
-                    {showLabels&&<text x={20} y={52} textAnchor="middle" fontSize={7.5} fontWeight="600" fill={color} style={{pointerEvents:"none",fontFamily:"system-ui"}}>{layerName(node.layer)}</text>}
-                  </g>
-                );
-              })}
-
-              {/* Anotações */}
-              {annotations.map(ann=>(
-                <foreignObject key={ann.id} x={ann.x-75} y={ann.y-18} width={150} height={120} style={{pointerEvents:"all"}}>
-                  <div className="group bg-amber-50 border border-amber-300 rounded-lg shadow-md text-xs overflow-hidden"
-                    onContextMenu={e=>{e.preventDefault();dispatch({tipo:"REMOVER_ANOTACAO",id:ann.id});}}>
-                    <div className="flex items-center justify-between px-2 py-1 bg-amber-100 border-b border-amber-200 cursor-pointer"
-                      onClick={()=>dispatch({tipo:"ALTERNAR_ANOTACAO",id:ann.id})}>
-                      <span className="text-[8px] font-bold text-amber-700">NOTA</span>
-                      <div className="flex gap-1">
-                        {ann.expanded?<ChevronUp size={9} className="text-amber-600"/>:<ChevronDown size={9} className="text-amber-600"/>}
-                        <button className="opacity-0 group-hover:opacity-100 text-amber-500 hover:text-red-500"
-                          onClick={e=>{e.stopPropagation();dispatch({tipo:"REMOVER_ANOTACAO",id:ann.id});}}><X size={9}/></button>
-                      </div>
-                    </div>
-                    {ann.expanded&&(
-                      <div className="p-1.5">
-                        {editingAnnotId===ann.id
-                          ? <textarea autoFocus rows={2} className="w-full text-[9px] bg-transparent resize-none outline-none text-amber-900" value={ann.text} placeholder="escreve aqui…" onChange={e=>dispatch({tipo:"EDITAR_ANOTACAO",id:ann.id,text:e.target.value})} onBlur={()=>{if(!ann.text.trim())dispatch({tipo:"REMOVER_ANOTACAO",id:ann.id});else setEditingAnnotId(null);}}/>
-                          : <div className="text-[9px] text-amber-900 cursor-text min-h-[18px]" onClick={()=>setEditingAnnotId(ann.id)}>{ann.text||<span className="text-amber-300 italic">clique para editar</span>}</div>
-                        }
-                      </div>
-                    )}
-                  </div>
-                </foreignObject>
-              ))}
-            </g>
-          </svg>
-
-          </div>{/* end 3D world */}
-
-          {/* 3D mode overlay */}
-          {is3D && (
-            <div className="absolute inset-0 pointer-events-none z-20">
-              <div className="absolute inset-0" style={{background:"radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.25) 100%)"}}/>
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-[#0F172A]/90 border border-[#334155] rounded-full px-4 py-1.5 text-[10px] font-bold text-white flex items-center gap-3 pointer-events-auto">
-                <Rotate3d size={12} className="text-blue-400"/>
-                <span>VISTA 3D — btn direito + arrasta para rodar</span>
-                <button onClick={()=>{setIs3D(false);setRotX(0);setRotY(0);setRotZ(0);}} className="text-slate-400 hover:text-white ml-1 text-[9px]">× EDITAR</button>
-              </div>
-            </div>
-          )}
-
-          {/* hints */}
-          {!is3D && (annotationMode||placingShapeType||cutMode)&&(
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-1.5 rounded-full text-[10px] font-bold text-white shadow-lg pointer-events-none"
-              style={{background:annotationMode?"#F59E0B":cutMode?"#EF4444":"#3B82F6"}}>
-              {annotationMode&&"MODO NOTA — clica no canvas · ESC cancela"}
-              {placingShapeType&&`COLOCAR ${GEO_SHAPES.find(s=>s.id===placingShapeType)?.name?.toUpperCase()} — clica para posicionar · ESC cancela`}
-              {cutMode&&"MODO CORTE — arrasta sobre ligações · ESC cancela"}
-            </div>
-          )}
-
-          {/* canvas vazio */}
-          {!nodes.length&&!shapes.length&&!placingShapeType&&(
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                <div className="text-5xl mb-4 opacity-10">⬡</div>
-                <div className="text-sm font-bold text-slate-400">Architect & Engineer</div>
-                <div className="text-[11px] text-slate-400 mt-1">Sidebar esquerda: adiciona nós L1–L5 ou formas geométricas</div>
-                <div className="text-[9px] text-slate-600 mt-2">Ctrl+A seleciona tudo · ? abre tutorial</div>
-              </div>
-            </div>
-          )}
-        </main>
+        {/* PAINEL DE MÓDULOS (Movimento 8) */}
+        {modulosNo && (
+          <PainelModulos no={modulosNo} layerName={layerName} layerColor={layerColor}
+            dispatch={dispatch} onFechar={()=>setModulosNoId(null)} />
+        )}
 
         {/* FLOW REPORT PANEL */}
         {showFlowReport && (
@@ -848,7 +661,7 @@ export default function App() {
             {/* Toggle 3D */}
             <div className="flex items-center justify-between mb-4">
               <span className="text-[10px] text-slate-300 font-bold">Vista 3D</span>
-              <button onClick={()=>setIs3D(p=>!p)}
+              <button onClick={()=>setIs3D(!is3D)}
                 className={`px-4 py-1.5 rounded-full text-[10px] font-black border transition-all
                   ${is3D?"bg-blue-600 border-blue-500 text-white":"bg-[#0F172A] border-[#334155] text-slate-400 hover:border-blue-600 hover:text-blue-400"}`}>
                 {is3D ? "ACTIVA ●" : "INACTIVA ○"}
@@ -869,7 +682,7 @@ export default function App() {
                 {n:"Profunda",   x:52,  y:-38, z:0},
                 {n:"Plano Z",    x:0,   y:0,   z:45},
               ].map(p=>(
-                <button key={p.n} onClick={()=>{setRotX(p.x);setRotY(p.y);setRotZ(p.z);setIs3D(true);}}
+                <button key={p.n} onClick={()=>{setRotX(p.x);setRotY(p.y);setRotZ(p.z);}}
                   className="py-1.5 px-1 rounded-lg text-[8px] font-bold border border-[#334155] bg-[#0F172A] text-slate-200 hover:border-blue-500 hover:text-blue-300 hover:bg-blue-900/20 transition-all text-center leading-tight">
                   {p.n}
                 </button>
@@ -889,7 +702,7 @@ export default function App() {
                     <span className="text-[9px] font-black" style={{color:s.color}}>{Math.round(s.val)}°</span>
                   </div>
                   <input type="range" min={s.min} max={s.max} step="1" value={Math.round(s.val)}
-                    onChange={e=>{s.set(parseInt(e.target.value));setIs3D(true);}}
+                    onChange={e=>s.set(parseInt(e.target.value))}
                     className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
                     style={{accentColor:s.color}}/>
                 </div>
@@ -897,7 +710,7 @@ export default function App() {
             </div>
 
             {/* Reset + info */}
-            <button onClick={()=>{setRotX(0);setRotY(0);setRotZ(0);setIs3D(false);}}
+            <button onClick={()=>{setRotX(0);setRotY(0);setRotZ(0);}}
               className="w-full mt-4 py-1.5 border border-[#334155] text-[9px] font-bold text-slate-200 rounded-lg hover:bg-[#334155] hover:text-white transition-all">
               RESET PARA 2D
             </button>
@@ -939,7 +752,7 @@ export default function App() {
             {libraryTab==="layers"&&LAYER_KEYS.map(key=>(
               <div key={key} className="mb-3 p-3 rounded-lg border border-[#334155] bg-[#0F172A]">
                 <div className="flex items-center gap-2 mb-2">
-                  <span style={{color:layerColor(key)}}>{LAYERS[key].icon}</span>
+                  <span style={{color:layerColor(key)}}><IconeCamada sector={sector} camada={key} size={18} /></span>
                   <div>
                     <div className="text-[10px] font-bold" style={{color:layerColor(key)}}>{key}: {layerName(key)}</div>
                     <div className="text-[8px] text-slate-300">{activeSector.desc[key]}</div>
@@ -1000,7 +813,7 @@ export default function App() {
                 <p className="text-[9px] text-slate-300 mb-3">Personaliza a cor de cada camada.</p>
                 {LAYER_KEYS.map(key=>(
                   <div key={key} className="flex items-center gap-2 mb-2 p-2 rounded-lg border border-[#334155] bg-[#0F172A]">
-                    <span style={{color:layerColor(key)}}>{LAYERS[key].icon}</span>
+                    <span style={{color:layerColor(key)}}><IconeCamada sector={sector} camada={key} size={18} /></span>
                     <span className="text-[10px] font-bold flex-1" style={{color:layerColor(key)}}>{key} — {layerName(key)}</span>
                     <input type="color" value={layerColor(key)} onChange={e=>dispatch({tipo:"DEFINIR_COR",camada:key,cor:e.target.value})} className="w-8 h-8 cursor-pointer rounded border border-[#334155] bg-transparent"/>
                     {customColors[key]&&<button onClick={()=>dispatch({tipo:"LIMPAR_COR",camada:key})} className="text-[9px] text-slate-300 hover:text-red-400">↩</button>}

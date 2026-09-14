@@ -1,7 +1,7 @@
 // Topologias pré-fabricadas que o utilizador insere no canvas.
 // Cada `gen()` devolve { nodes, connections } prontos a fundir no diagrama.
 import { uid } from "../lib/uid.js";
-import { LAYER_KEYS } from "./camadas.jsx";
+import { LAYER_KEYS } from "./camadas.js";
 
 export const TEMPLATES = [
   { id:"helicoidal", name:"Helicoidal",      icon:"🌀", desc:"Espiral L1→L2→L3→L4→L5",             gen:()=>{ const ns=LAYER_KEYS.map((l,i)=>({id:`node_${uid()}`,layer:l,x:80+i*130,y:200+Math.sin(i*1.2)*60,createdAt:Date.now()})); return {nodes:ns,connections:ns.slice(0,-1).map((n,i)=>({id:`conn_${uid()}`,sourceId:n.id,targetId:ns[i+1].id}))}; }},

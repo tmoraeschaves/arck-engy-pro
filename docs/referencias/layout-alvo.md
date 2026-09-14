@@ -41,6 +41,20 @@ Ajustes-chave do conceito: agrupamento por subsistemas em caixas delimitadoras t
 linhas contínuas com portas rotuladas (adiado); contraste calibrado entre blocos e tipografia
 em caixa alta; barra de topo escura com abas.
 
+## Mobile/táctil — testado 2026-09-05, confirmado não funcional
+
+Aberto no telemóvel via IP da rede local (`http://<IP-LAN>:5173`, `vite --host`). Dois problemas:
+
+- **Layout não responsivo** — cabeçalho sobrepõe-se, texto corta. Desenhado só para ecrã de
+  computador.
+- **Arrastar não funciona** — todo o arrasto (mover nós/formas, cortar, pan) usa só eventos de
+  rato (`onMouseDown`/`onMouseMove` no `Canvas.jsx`, `useAtalhos.js`). Ecrãs tácteis não disparam
+  estes eventos da mesma forma; precisaria de `onTouchStart`/`onTouchMove`/`onTouchEnd` a fazer o
+  mesmo trabalho em paralelo.
+
+**Decisão do Tiago:** por agora o ARCK usa-se só no computador. Layout responsivo + suporte
+táctil ficam para quando o redesign visual for a sério — não implementar isoladamente antes disso.
+
 ## Onde aplicar no código (depois do M7)
 
 - `componentes/Cabecalho.jsx` — o header

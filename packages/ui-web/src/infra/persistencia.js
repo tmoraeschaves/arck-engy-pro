@@ -13,6 +13,33 @@ export function guardarProjetoLocal(projeto) {
   return json;
 }
 
+/**
+ * Lê o projecto guardado automaticamente (recuperação ao reabrir/actualizar).
+ * Nunca rebenta — devolve `null` se não existir ou estiver corrompido.
+ */
+export function lerProjetoLocal() {
+  try {
+    const json = localStorage.getItem(CHAVE_PROJETO);
+    if (!json) return null;
+    const p = JSON.parse(json);
+    return (p && typeof p === "object" && Array.isArray(p.nodes)) ? p : null;
+  } catch { return null; }
+}
+
+/**
+ * Guarda em silêncio (autosave). Se estourar a quota do localStorage (o `bgImage`
+ * como data URL é o suspeito habitual), tenta outra vez sem a imagem de fundo —
+ * o diagrama recupera sempre, no pior caso sem o fundo.
+ * Devolve `true` | `"sem-fundo"` | `false`.
+ */
+export function autoguardarProjetoLocal(projeto) {
+  try { localStorage.setItem(CHAVE_PROJETO, JSON.stringify(projeto)); return true; }
+  catch {
+    try { localStorage.setItem(CHAVE_PROJETO, JSON.stringify({ ...projeto, bgImage: null })); return "sem-fundo"; }
+    catch { return false; }
+  }
+}
+
 export function apagarProjetoLocal() {
   localStorage.removeItem(CHAVE_PROJETO);
 }
@@ -37,6 +64,16 @@ export function lerFicheiroJSON(file) {
     };
     r.onerror = () => reject(new Error("erro ao ler o ficheiro"));
     r.readAsText(file);
+  });
+}
+
+/** Lê uma imagem (ficheiro, ou item de arrastar/colar) como data URL. */
+export function lerImagemComoDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = (ev) => resolve(ev.target.result);
+    r.onerror = () => reject(new Error("erro ao ler a imagem"));
+    r.readAsDataURL(file);
   });
 }
 

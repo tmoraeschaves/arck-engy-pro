@@ -198,3 +198,140 @@ mesma ordem, com as mesmas respostas: **O QUÊ · POR QUÊ · PARA QUÊ · PARA 
 não se reinventa por material.
 
 Fonte única: **`docs/POSICIONAMENTO.md`**. Também é o brief para a sessão de naming (DEC-007).
+
+---
+
+## DEC-012 — Licenciamento: rascunho escrito, por confirmar
+**Data:** 2026-09-05 · **Situação:** rascunho do Engenheiro, aguarda confirmação do Arquitecto
+
+`LICENSE` estava a 0 bytes — bloqueava o "abrir" (DEC-001/002) porque um repositório público
+sem licença não pode ser legalmente usado por ninguém. Escrevi o que já estava proposto no
+`INDEX.md` desde 2026-08-31 e nunca fora confirmado:
+
+- **Código** (raiz + `packages/`): `LICENSE` — MIT. `package.json` actualizado (era `UNLICENSED`).
+- **Método** (`docs/fundacao/`): `docs/fundacao/LICENSE` — CC BY 4.0, crédito a Tiago Moraes Chaves.
+
+**Isto é um rascunho, não uma decisão fechada** — o repositório continua privado, nada disto
+tem efeito legal até ao repo abrir. Precisa da confirmação explícita do Tiago antes de contar
+como decidido (ao contrário das outras DECs, esta ainda não tem "Decisão de: Tiago").
+
+---
+
+## DEC-013 — Cada camada passa a poder conter os módulos/funções que lhe cabem (Movimento 8)
+**Data:** 2026-09-05 · **Decisão de:** Tiago Moraes Chaves
+
+O "embutir o que cabe dentro de cada camada" (antes adiado como v2 em `MOVIMENTO_7.md`)
+passa a prioridade. Razão do Arquitecto: *"é muito importante para não ficarmos indo e
+voltando"* — decidir o modelo de dados agora, enquanto ainda se está a reestruturar, evita
+reescrever tudo depois.
+
+**Formato (resposta do Arquitecto): híbrido.** Um nó guarda uma **lista** de módulos/funções
+(texto simples: `label` + `kind` opcional + `nota` opcional). Qualquer item dessa lista pode,
+quando for preciso, ser **promovido** a um mini-diagrama próprio (`filho`) — mas só quando
+esse detalhe fizer falta, não por omissão.
+
+**Navegação: duas vistas, à escolha do utilizador** (como os modos de vista de um explorador
+de ficheiros) — o Arquitecto quer ambas disponíveis, não uma só:
+1. **Painel lateral** — seleccionar um nó mostra a sua lista ao lado; o canvas não muda.
+2. **Duplo-clique entra** — abre o conteúdo do nó no próprio canvas, com migalhas de pão
+   para voltar.
+
+**Rejeitado pelo Arquitecto:** *zoom infinito* para dentro do nó ("a opção mais arriscada,
+o 3D já deu problemas") e **aninhamento profundo sem limite** ("camada dentro de camada
+dentro de camada" — não agora). O Engenheiro implementa um **limite de profundidade** (3
+níveis) no reducer.
+
+**Consequência:** abre o **Movimento 8** (`docs/MOVIMENTO_8.md`), fatiado e testado como o 7.
+Fatia 1 = modelo de dados + acções do reducer + testes, sem UI. As fatias de UI só avançam
+depois de o Arquitecto validar o plano de fatiamento.
+
+### Resolução da ambiguidade Guiado vs. Livre (2026-09-05)
+
+Havia duas leituras do aninhamento: níveis fixos (a "Visão da integração ADS" do `INDEX.md`,
+com vocabulário fechado) vs. o modelo genérico da Fatia 1. **Fechada pelo Arquitecto: é o
+mesmo modelo de dados nos dois modos.** A Fatia 1 (`id`, `label`, `kind`, `nota`, `filho`)
+suporta os dois **sem qualquer alteração no reducer**. A diferença é só a camada de cima:
+
+- **Modo Guiado** — os módulos vêm pré-criados de um *template de arranque*, com `label` e
+  `kind` fixos no vocabulário da fundação (M0–M5). O utilizador segue a planta, não inventa.
+- **Modo Livre** — o utilizador cria o módulo genérico e escreve o seu próprio `label` e
+  escolhe o seu próprio `kind` (etiqueta + ícone). A função por trás é a mesma; muda só o
+  significado que ele lhe dá no contexto do projecto dele.
+
+É um **template diferente por modo, não um modelo de dados por modo**. Confirma também que
+a Fatia 1 foi construída certa — não há nada a refazer.
+
+> ⚠️ A parte do *template M0–M5* foi **revertida pela DEC-014**. O resto (mesmo modelo
+> de dados nos dois modos, Fatia 1 certa) mantém-se.
+
+---
+
+## DEC-014 — O M0–M5 não entra nas camadas; Fatia 2b cancelada
+**Data:** 2026-09-06 · **Decisão de:** Tiago Moraes Chaves
+
+A DEC-013 previa um *template de arranque* para o Modo Guiado que semeava a lista de
+módulos de um nó com o vocabulário M0–M5 da fundação. Ao desenhar a Fatia 2b, o Arquitecto
+reavaliou:
+
+> *"Vendo desse ângulo, já não faz sentido — não é arquitectura, é engenharia. Deixamos
+> de fora o M0 a M5: não faz parte das camadas, faz parte do processo posterior."*
+
+**Decisão:**
+1. **M0–M5 sai do Movimento 8.** São fases do processo (Mentalidade → Descobrir →
+   Projetar → Construir → Proteger → Entregar), não módulos que vivam dentro de uma
+   camada L1–L5. Semeá-los na lista de um nó era um erro de categoria.
+2. **A Fatia 2b é cancelada.** Não há template de arranque. O painel de módulos da
+   Fatia 2a serve o Modo Guiado e o Modo Livre exactamente igual.
+3. **Guiado vs. Livre** continua a ser só o que a app já faz: o Guiado valida o fluxo
+   L1→L2→L3→L4→L5; o Livre aceita qualquer ligação.
+4. O M0–M5 como **auxílio opt-in para iniciantes em software** (uma checklist de fases
+   ao nível do projecto, não do nó) fica parqueado para um movimento futuro, se e quando
+   fizer falta.
+
+**Consequência:** o Movimento 8 salta da Fatia 2a directamente para a Fatia 3
+(`PROMOVER_MODULO` / sub-diagramas). Nenhum código a remover — o M0–M5 nunca chegou a
+entrar na `ui-web`, só vivia em `docs/fundacao/`.
+
+---
+
+## DEC-015 — Open-source e gratuito, definitivo: a ferramenta é a prova da arquitectura
+**Data:** 2026-09-10 · **Decisão de:** Tiago Moraes Chaves
+
+Reafirma a DEC-001 e **fecha a questão de vez**. Entre 2026-09-08 e 2026-09-10 a posição
+oscilou três vezes (aberta → vender/fechada → aberta) numa exploração com o Engenheiro sobre
+se valia a pena monetizar. Fechada:
+
+> *"Não vamos vender, vamos manter open source. Realmente é a prova da minha arquitectura
+> de sistema."*
+
+**Razão que sustenta:** se a ferramenta existe para provar que o Arquitecto sabe desenhar
+arquitectura de sistemas (autodidacta, sem título), então **tem de ser vista** — código,
+decisões, testes, tudo. Fechada, prova zero. O objectivo "abrir portas" (DEC-001) e o
+objectivo "vender" puxam em direcções opostas; escolhido o primeiro como primário.
+
+**O que isto fixa (para não voltar a abrir sozinho):**
+- **`LICENSE` MIT (código) + CC BY 4.0 (`docs/fundacao/`) — confirmado.** Deixa de ser
+  rascunho (fecha o pendente da DEC-012). Para uma peça de prova, MIT maximiza o que se
+  quer: ser lida, usada, citada. *Não* trocar por "todos os direitos reservados".
+- **O refactor do `App.jsx` volta a ser prioridade.** Estava adiado (DEC-005) enquanto se
+  ponderava vender — aí era dívida técnica tolerável. Numa peça de prova de arquitectura
+  limpa, um ficheiro de ~850 linhas com telemetria + toolbar + painel 3D + autosave lá
+  dentro, e 2 erros de lint tolerados como *baseline*, é contradição com a tese. É a
+  primeira coisa que um avaliador abre.
+- **O nome deixa de ser bloqueador crítico (DEC-007).** Em open-source, o pior caso de não
+  ter marca registada é ter de renomear — chato, não fatal. Pode lançar-se como
+  `arck-engy-pro` e renomear depois. `ARCK` e `ENGY` ficam como os nomes dos **motores**
+  (já é o que são: `arck-validador.ts`, `engy-tensao.ts`); o produto pode ganhar uma
+  palavra por cima mais tarde, sem urgência e sem drama contratual.
+- **INPI/EUIPO passam a dispensáveis de facto**, não por poupança.
+
+**Recomendação do Engenheiro registada:** as imagens de marketing geradas (modelos com
+capacete, edifício) servem LinkedIn, não o `README` de um repositório — quem chega a
+open-source é convencido por um GIF da ferramenta a funcionar, o diagrama de camadas real,
+os testes a passar e o `DECISOES.md`, não por fotografia de campanha. As marcas gráficas
+(o "A", as barras do "E") aproveitam-se para favicon/ícone; as fotos não.
+
+**Consequência imediata:** escrever o `README.md` (não existe) a partir do
+`docs/POSICIONAMENTO.md` (DEC-011), **depois** de a `mov7-fatia5` estar merjada em `main` —
+o README apresenta o repo como prova ("funciona, testes passam") e isso tem de ser verdade
+em `main`, não numa branch com 20 commits por integrar.

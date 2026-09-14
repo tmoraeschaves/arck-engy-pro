@@ -3,7 +3,7 @@
  * Prova que a UI e a máquina de estados estão ligadas (Movimento 7, Fatia 4).
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App.jsx";
 
@@ -64,5 +64,22 @@ describe("App + reducer do projecto", () => {
     const tabMedicina = screen.getAllByRole("button", { name: /Medicina/ })[0];
     await user.click(tabMedicina);
     expect(screen.getByTitle("Adicionar DIAGNÓSTICO")).toBeInTheDocument();
+  });
+
+  it("autosave: fechar e reabrir recupera o diagrama (não começa do zero)", async () => {
+    const user = await arrancar();
+    await user.click(screen.getByTitle("Adicionar SENSÓRIA"));
+    await user.click(screen.getByTitle("Adicionar LÓGICA"));
+    expect(contaNos()).toBe(2);
+
+    // o autosave tem 500ms de atraso
+    await new Promise(r => setTimeout(r, 700));
+
+    // "fechar e reabrir" = desmontar e montar de novo o App
+    cleanup();
+    render(<App />);
+    // já não pede o sector nem o tutorial — e os 2 nós estão lá
+    expect(screen.queryByText(/USAR ENGENHARIA POR PADRÃO/i)).not.toBeInTheDocument();
+    expect(contaNos()).toBe(2);
   });
 });

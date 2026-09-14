@@ -16,7 +16,7 @@
     "test:ui": "cd packages/ui-web && vitest run"
   },
   "author": "Tiago Moraes Chaves",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "devDependencies": {
     "@types/node": "^26.0.0",
     "tsx": "^4.19.4",

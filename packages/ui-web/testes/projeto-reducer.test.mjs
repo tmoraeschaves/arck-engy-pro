@@ -17,7 +17,7 @@ describe("estado inicial e snapshot", () => {
   it("snapshot só expõe os campos do documento", () => {
     const s = snapshot(estadoInicial);
     expect(Object.keys(s).sort()).toEqual(
-      ["annotations", "bgImage", "bgOpacity", "connections", "customColors", "freeMode", "nodes", "sector", "shapes"],
+      ["annotations", "bgImage", "bgLocked", "bgOpacity", "connections", "customColors", "freeMode", "nodes", "sector", "shapes"],
     );
   });
   it("acção desconhecida → mesmo estado (referência intacta)", () => {
@@ -45,6 +45,19 @@ describe("nós", () => {
     expect(e.nodes.find(n => n.id === "n1")).toMatchObject({ x: 10, y: 10 });
   });
 
+  it("ALTERNAR_TRAVA_NO liga e desliga o `locked` do nó", () => {
+    let e = r(comNos(no("n1", "L1")), { tipo: "ALTERNAR_TRAVA_NO", id: "n1" });
+    expect(e.nodes[0].locked).toBe(true);
+    e = r(e, { tipo: "ALTERNAR_TRAVA_NO", id: "n1" });
+    expect(e.nodes[0].locked).toBe(false);
+  });
+
+  it("nó trancado: REMOVER_NO e MOVER_NO são no-op", () => {
+    const trancado = comNos({ ...no("n1", "L1", 10, 10), locked: true });
+    expect(r(trancado, { tipo: "REMOVER_NO", id: "n1" })).toBe(trancado);
+    expect(r(trancado, { tipo: "MOVER_NO", id: "n1", x: 99, y: 99 })).toBe(trancado);
+  });
+
   it("ESCALAR_LAYOUT com diagrama vazio → no-op (Lição de fronteira)", () => {
     expect(r(estadoInicial, { tipo: "ESCALAR_LAYOUT", fator: 2 })).toBe(estadoInicial);
   });
@@ -54,6 +67,59 @@ describe("nós", () => {
     // centróide (50,0): n1 → -50, n2 → 150
     expect(e.nodes[0].x).toBe(-50);
     expect(e.nodes[1].x).toBe(150);
+  });
+});
+
+describe("módulos dentro de um nó (Movimento 8)", () => {
+  const base = comNos(no("n1", "L3"), no("n2", "L2"));
+  const mod = (id, label) => ({ id, label });
+
+  it("ADICIONAR_MODULO anexa à lista do nó certo", () => {
+    const e = r(base, { tipo: "ADICIONAR_MODULO", noId: "n1", modulo: mod("m1", "Autenticação") });
+    expect(e.nodes.find(n => n.id === "n1").modules).toEqual([{ id: "m1", label: "Autenticação" }]);
+    expect(e.nodes.find(n => n.id === "n2").modules).toBeUndefined();
+  });
+
+  it("ADICIONAR_MODULO para um nó inexistente → no-op", () => {
+    expect(r(base, { tipo: "ADICIONAR_MODULO", noId: "xxx", modulo: mod("m1", "x") })).toBe(base);
+  });
+
+  it("EDITAR_MODULO faz merge de label/kind/nota e nunca toca em id nem filho", () => {
+    let e = r(base, { tipo: "ADICIONAR_MODULO", noId: "n1", modulo: { id: "m1", label: "A", filho: null } });
+    e = r(e, { tipo: "EDITAR_MODULO", noId: "n1", moduloId: "m1", patch: { label: "B", kind: "função", id: "HACK", filho: { nodes: [] } } });
+    const m = e.nodes.find(n => n.id === "n1").modules[0];
+    expect(m).toEqual({ id: "m1", label: "B", kind: "função", filho: null });
+  });
+
+  it("REMOVER_MODULO tira só o módulo indicado", () => {
+    let e = r(base, { tipo: "ADICIONAR_MODULO", noId: "n1", modulo: mod("m1", "A") });
+    e = r(e, { tipo: "ADICIONAR_MODULO", noId: "n1", modulo: mod("m2", "B") });
+    e = r(e, { tipo: "REMOVER_MODULO", noId: "n1", moduloId: "m1" });
+    expect(e.nodes.find(n => n.id === "n1").modules.map(m => m.id)).toEqual(["m2"]);
+  });
+
+  it("MOVER_MODULO troca com o vizinho; nos limites é no-op", () => {
+    let e = r(base, { tipo: "ADICIONAR_MODULO", noId: "n1", modulo: mod("m1", "A") });
+    e = r(e, { tipo: "ADICIONAR_MODULO", noId: "n1", modulo: mod("m2", "B") });
+    e = r(e, { tipo: "ADICIONAR_MODULO", noId: "n1", modulo: mod("m3", "C") });
+    const desce = r(e, { tipo: "MOVER_MODULO", noId: "n1", moduloId: "m1", direccao: 1 });
+    expect(desce.nodes.find(n => n.id === "n1").modules.map(m => m.id)).toEqual(["m2", "m1", "m3"]);
+    const foraDeCima = r(e, { tipo: "MOVER_MODULO", noId: "n1", moduloId: "m1", direccao: -1 });
+    expect(foraDeCima).toBe(e);
+    const foraDeBaixo = r(e, { tipo: "MOVER_MODULO", noId: "n1", moduloId: "m3", direccao: 1 });
+    expect(foraDeBaixo).toBe(e);
+  });
+
+  it("REMOVER_NO leva os módulos do nó com ele", () => {
+    let e = r(base, { tipo: "ADICIONAR_MODULO", noId: "n1", modulo: mod("m1", "A") });
+    e = r(e, { tipo: "REMOVER_NO", id: "n1" });
+    expect(e.nodes.map(n => n.id)).toEqual(["n2"]);
+  });
+
+  it("os módulos sobrevivem a snapshot → CARREGAR_PROJETO (andam no nó)", () => {
+    const e = r(base, { tipo: "ADICIONAR_MODULO", noId: "n1", modulo: mod("m1", "A") });
+    const recarregado = r(estadoInicial, { tipo: "CARREGAR_PROJETO", projeto: snapshot(e) });
+    expect(recarregado.nodes.find(n => n.id === "n1").modules).toEqual([{ id: "m1", label: "A" }]);
   });
 });
 
@@ -116,6 +182,17 @@ describe("formas", () => {
     e = r(e, { tipo: "REMOVER_FORMA", id: "s1" });
     expect(e.shapes).toEqual([]);
   });
+
+  it("ALTERNAR_TRAVA_FORMA + forma trancada: MOVER / REDIMENSIONAR / REMOVER são no-op", () => {
+    let e = r(estadoInicial, { tipo: "ADICIONAR_FORMA", forma: f });
+    e = r(e, { tipo: "ALTERNAR_TRAVA_FORMA", id: "s1" });
+    expect(e.shapes[0].locked).toBe(true);
+    expect(r(e, { tipo: "MOVER_FORMA", id: "s1", x: 99, y: 99 })).toBe(e);
+    expect(r(e, { tipo: "REDIMENSIONAR_FORMA", id: "s1", x: 1, y: 1, w: 9, h: 9 })).toBe(e);
+    expect(r(e, { tipo: "REMOVER_FORMA", id: "s1" })).toBe(e);
+    e = r(e, { tipo: "ALTERNAR_TRAVA_FORMA", id: "s1" });
+    expect(e.shapes[0].locked).toBe(false);
+  });
 });
 
 describe("anotações", () => {
@@ -128,6 +205,12 @@ describe("anotações", () => {
     expect(e.annotations[0].expanded).toBe(false);
     e = r(e, { tipo: "REMOVER_ANOTACAO", id: "a1" });
     expect(e.annotations).toEqual([]);
+  });
+
+  it("DEFINIR_COR_ANOTACAO guarda a cor na anotação", () => {
+    let e = r(estadoInicial, { tipo: "ADICIONAR_ANOTACAO", anotacao: a });
+    e = r(e, { tipo: "DEFINIR_COR_ANOTACAO", id: "a1", cor: "sky" });
+    expect(e.annotations[0].cor).toBe("sky");
   });
 });
 
@@ -145,6 +228,28 @@ describe("aparência", () => {
     expect(e.bgImage).toBe("data:...");
     e = r(e, { tipo: "DEFINIR_OPACIDADE_FUNDO", opacidade: 0.7 });
     expect(e.bgOpacity).toBe(0.7);
+  });
+
+  it("ALTERNAR_BLOQUEIO_FUNDO liga e desliga a trava", () => {
+    let e = r(estadoInicial, { tipo: "ALTERNAR_BLOQUEIO_FUNDO" });
+    expect(e.bgLocked).toBe(true);
+    e = r(e, { tipo: "ALTERNAR_BLOQUEIO_FUNDO" });
+    expect(e.bgLocked).toBe(false);
+  });
+
+  it("trancado: DEFINIR_FUNDO com img=null (remover) é no-op", () => {
+    const trancado = { ...estadoInicial, bgImage: "data:x", bgLocked: true };
+    expect(r(trancado, { tipo: "DEFINIR_FUNDO", img: null })).toBe(trancado);
+  });
+
+  it("trancado: substituir por outra imagem também é bloqueado (trancar = fechar)", () => {
+    const trancado = { ...estadoInicial, bgImage: "data:x", bgLocked: true };
+    expect(r(trancado, { tipo: "DEFINIR_FUNDO", img: "data:y" })).toBe(trancado);
+  });
+
+  it("destrancado: já se pode substituir a imagem", () => {
+    const livre = { ...estadoInicial, bgImage: "data:x", bgLocked: false };
+    expect(r(livre, { tipo: "DEFINIR_FUNDO", img: "data:y" }).bgImage).toBe("data:y");
   });
 });
 
@@ -175,6 +280,12 @@ describe("projecto inteiro", () => {
     expect(e.sector).toBe("negocios");
     expect(e.freeMode).toBe(true);
     expect(e.customColors).toEqual({ L1: "#fff" });
+  });
+
+  it("RESETAR com o fundo trancado poupa a imagem (esboço-guia sobrevive ao reset)", () => {
+    const e = r({ ...cheio, bgLocked: true }, { tipo: "RESETAR" });
+    expect(e.nodes).toEqual([]);
+    expect(e.bgImage).toBe("x");
   });
 
   it("CARREGAR_PROJETO substitui tudo; campos em falta → vazios", () => {
