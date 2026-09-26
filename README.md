@@ -6,9 +6,6 @@ Não é um quadro branco. Num quadro branco ligas qualquer caixa a qualquer caix
 avisa. Aqui, em **Modo Guiado**, uma ligação inválida **não se consegue traçar** — a
 ferramenta conhece as regras das camadas e não te deixa quebrá-las.
 
-<!-- TODO(Tiago): pôr aqui uma captura da ferramenta com um diagrama L1→L5 válido
-     (integridade 99,8%, uma realimentação L5→L2), guardada em docs/media/captura.png.
-     Um GIF curto do "não deixa traçar uma ligação inválida" seria ainda melhor. -->
 ![Captura da ferramenta](docs/media/captura.png)
 
 Junto ao desenho: mede o estado do diagrama (repouso / guiado / livre-correcto / erro),
@@ -88,7 +85,7 @@ Monorepo com uma fronteira dura entre o núcleo e a interface:
 | Pacote | O que é | Testes |
 |---|---|---|
 | [`packages/core`](packages/core) | O motor, em TypeScript puro — **ARCK** valida as ligações, **ENGY** mede a tensão, **MENTOR** explica. Sem React, sem DOM, sem browser. | 42 (coração) + 11 (fronteira), `tsx` |
-| [`packages/ui-web`](packages/ui-web) | O editor visual — React + Vite. Canvas SVG, `useReducer` com transições nomeadas e testadas uma a uma. | 133, `vitest` + `jsdom` |
+| [`packages/ui-web`](packages/ui-web) | O editor visual — React + Vite. Canvas SVG, `useReducer` com transições nomeadas e testadas uma a uma. | 144, `vitest` + `jsdom` |
 
 A regra de ouro: **a lógica de domínio vive só no `core`**. A interface nunca decide o que é
 uma arquitectura válida — pergunta ao `core`.

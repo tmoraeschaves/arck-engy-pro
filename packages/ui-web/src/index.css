@@ -9,3 +9,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Barra de rolagem fina e no tema — para faixas horizontais (ex.: os 12 separadores de sector,
+   que não cabem na maioria dos ecrãs; a barra clássica do browser aparecia branca). */
+.rolagem-fina { scrollbar-width: thin; scrollbar-color: #334155 transparent; }

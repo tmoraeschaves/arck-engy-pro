@@ -59,7 +59,7 @@ export function Cabecalho({
           <span className="text-base font-black leading-tight" style={{color:cor}}>{texto}</span>
         </div>
 
-        <div className="flex gap-1 border-l border-[#334155] pl-3 overflow-x-auto">
+        <div className="flex gap-1 border-l border-[#334155] pl-3 overflow-x-auto rolagem-fina">
           {Object.entries(SECTORS).map(([key,s])=>(
             <button key={key} onClick={()=>onEscolherSector(key)}
               className={`px-2 h-7 text-[8px] font-bold rounded-md whitespace-nowrap transition-all
