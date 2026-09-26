@@ -4,6 +4,7 @@
  */
 import { isValidLink } from "../lib/core-bridge.js";
 import { METRICS } from "../config/app-meta.js";
+import { aparaNaBorda } from "../lib/geometria.js";
 
 /**
  * Constrói o SVG do diagrama como string. Devolve null se não há nada para exportar.
@@ -22,7 +23,8 @@ export function construirSVG({ nodes, connections, shapes, corDaCamada, modoLivr
     const s = nodes.find(n => n.id === c.sourceId), t = nodes.find(n => n.id === c.targetId);
     if (!s || !t) return "";
     const ok = modoLivre || isValidLink(s.layer, t.layer);
-    return `<line x1="${s.x - mx}" y1="${s.y - my}" x2="${t.x - mx}" y2="${t.y - my}" stroke="${ok ? "#10B981" : "#EF4444"}" stroke-width="2" marker-end="url(#arr)"/>`;
+    const l = aparaNaBorda({ x: s.x - mx, y: s.y - my }, { x: t.x - mx, y: t.y - my }); // seta à vista, fora do nó
+    return `<line x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}" stroke="${ok ? "#10B981" : "#EF4444"}" stroke-width="2" marker-end="url(#arr)"/>`;
   }).join("");
 
   const ns = nodes.map(n => {
@@ -30,7 +32,7 @@ export function construirSVG({ nodes, connections, shapes, corDaCamada, modoLivr
     return `<g transform="translate(${n.x - mx - 20},${n.y - my - 20})"><rect width="40" height="40" fill="${c}" rx="6" opacity=".9"/><text x="20" y="26" text-anchor="middle" font-size="8" fill="white" font-weight="bold" font-family="system-ui">${n.layer}</text></g>`;
   }).join("");
 
-  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs><rect width="${w}" height="${h}" fill="white"/>${cs}${ns}<text x="${w - 8}" y="${h - 5}" text-anchor="end" font-size="7" fill="#94a3b8" font-family="system-ui">Architect &amp; Engineer v${METRICS.version}</text></svg>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs><rect width="${w}" height="${h}" fill="white"/>${cs}${ns}<text x="${w - 8}" y="${h - 5}" text-anchor="end" font-size="7" fill="#94a3b8" font-family="system-ui">Architect &amp; Engineer v${METRICS.version}</text></svg>`;
 }
 
 function descarregar(href, download) {

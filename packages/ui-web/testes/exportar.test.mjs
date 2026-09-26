@@ -35,4 +35,13 @@ describe("construirSVG", () => {
     expect(livre).toContain("#10B981");
     expect(livre).not.toContain("#EF4444");
   });
+
+  it("as linhas acabam na borda do nó de destino (a seta não fica tapada pelo nó)", () => {
+    const a = { id: "a", layer: "L1", x: 0, y: 0 }, b = { id: "b", layer: "L2", x: 200, y: 0 };
+    const svg = construirSVG({ nodes: [a, b], connections: [{ id: "c", sourceId: "a", targetId: "b" }], shapes: [], corDaCamada: cor, modoLivre: false });
+    const [, x1, x2] = svg.match(/<line x1="([\d.]+)" y1="[\d.]+" x2="([\d.]+)"/);
+    // origem em x=70 e destino em x=270 depois do deslocamento de margem (mx = -70)
+    expect(Number(x1)).toBeGreaterThanOrEqual(70 + 20);
+    expect(Number(x2)).toBeLessThanOrEqual(270 - 20);
+  });
 });

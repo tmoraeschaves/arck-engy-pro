@@ -77,8 +77,10 @@ Falta (é o que a DEC-005 manda fazer — só visual):
 1. **Containers de agrupamento** — rectângulo translúcido com rótulo ("Subsistema 1"), sem o
    nó pertencer ao grupo no modelo. *Decisão pendente do Tiago:* como se cria (seleccionar nós
    → agrupar, ou desenhar a caixa à mão).
-2. **Setas mais visíveis** — os marcadores (`markerWidth 5`) ficam escondidos debaixo do nó de
-   destino; na captura do README quase não se vêem.
+2. ✅ **Setas visíveis** (2026-09-27) — a linha ia de centro a centro e a seta ficava debaixo do
+   nó de destino. Agora `lib/geometria.js` (`aparaNaBorda`) apara-a à borda dos nós, no canvas e
+   na exportação SVG/PNG; seta um pouco maior. Resta: quando a ligação chega por baixo, a ponta
+   encosta ao rótulo do nó.
 3. **Grelha de linhas ténues** em vez de pontos — opcional, gosto.
 4. **Tokens de cor/espaçamento** num só sítio — hoje há hex espalhados (`#0F172A`, `#1E293B`…).
 5. **Faixa dos 12 sectores** — não cabe na maioria dos ecrãs (1422 e 1600 px incluídos). A barra

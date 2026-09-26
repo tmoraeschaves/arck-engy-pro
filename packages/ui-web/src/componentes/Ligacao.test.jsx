@@ -25,4 +25,11 @@ describe("Ligacao", () => {
     fireEvent.click(container.querySelector("circle"));
     expect(onDesligar).toHaveBeenCalledWith("c1");
   });
+
+  it("a linha acaba na borda do nó de destino (a seta fica visível, não tapada pelo nó)", () => {
+    const { container } = render(<svg><Ligacao id="c1" origem={origem} destino={{ x: 200, y: 0 }} cor="#10B981" marcador="arr-ok" retorno={false} onDesligar={() => {}} /></svg>);
+    const linha = container.querySelector("line");
+    expect(Number(linha.getAttribute("x2"))).toBeLessThanOrEqual(200 - 20);
+    expect(Number(linha.getAttribute("x1"))).toBeGreaterThanOrEqual(20);
+  });
 });
