@@ -1,5 +1,10 @@
 // Metadados da aplicação e constantes de layout.
-export const METRICS = { version: "24.1.0", build: "2025.05.29", kernel: "A&E v1.1" };
+import raiz from "../../../../package.json";
+import core from "../../../core/package.json";
+
+// Versão mostrada no cabeçalho = a do package.json da raiz (a mesma das tags git);
+// o "kernel" é o pacote @arck/core. Fonte única — não escrever números à mão aqui.
+export const METRICS = { version: raiz.version, kernel: `ARCK core v${core.version}` };
 export const GRID_SIZE = 50;
 
 // Amplitude máxima de inclinação da vista 3D (graus por eixo).

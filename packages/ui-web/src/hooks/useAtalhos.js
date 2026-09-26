@@ -52,5 +52,10 @@ export function useAtalhos({
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onDown);
     return () => { window.removeEventListener("mouseup",onUp); window.removeEventListener("keydown",onKey); window.removeEventListener("mousedown",onDown); };
-  }, [cutMode, cutStart, cutEnd, selectedNode, selectedShapeId, zoom, offset]);
+  }, [cutMode, cutStart, cutEnd, selectedNode, selectedShapeId, zoom, offset, canvasRef,
+      cutConnections, removeNode, dispatch,
+      setDraggingNode, setIsPanning, setDraggingShape, setResizingShape, setDraggingLib,
+      setDraggingRot, setDragging3DPanel, setCutMode, setCutStart, setCutEnd,
+      setSelectedNode, setSelectedShapeId, setAnnotationMode, setEditingAnnotId,
+      setPlacingShapeType, setShowShapePicker, setAllSelected, setIs3D, setZoom, setOffset]);
 }
