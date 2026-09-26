@@ -62,3 +62,27 @@ táctil ficam para quando o redesign visual for a sério — não implementar is
 - `componentes/No.jsx` — bloco + rótulo
 - `componentes/Ligacao.jsx` — linha + seta
 - Tokens de cor/espaçamento — `tailwind.config.js` / `config/` (a criar)
+
+## Estado face ao alvo (2026-09-27, depois da v2.1.0)
+
+Boa parte da linguagem visual já entrou nas rondas de smoke test:
+
+- ✅ Header escuro com abas de sector com ícone
+- ✅ Canvas claro com grelha (pontos, alinhada com o snap)
+- ✅ Nós: blocos arredondados, cor plana, ícone branco, rótulo em CAIXA ALTA por baixo
+- ✅ Ligações contínuas com seta (só o retorno L5→L2 é tracejado — de propósito)
+
+Falta (é o que a DEC-005 manda fazer — só visual):
+
+1. **Containers de agrupamento** — rectângulo translúcido com rótulo ("Subsistema 1"), sem o
+   nó pertencer ao grupo no modelo. *Decisão pendente do Tiago:* como se cria (seleccionar nós
+   → agrupar, ou desenhar a caixa à mão).
+2. **Setas mais visíveis** — os marcadores (`markerWidth 5`) ficam escondidos debaixo do nó de
+   destino; na captura do README quase não se vêem.
+3. **Grelha de linhas ténues** em vez de pontos — opcional, gosto.
+4. **Tokens de cor/espaçamento** num só sítio — hoje há hex espalhados (`#0F172A`, `#1E293B`…).
+5. **Faixa dos 12 sectores** — não cabe na maioria dos ecrãs (1422 e 1600 px incluídos). A barra
+   de rolagem já está no tema (`.rolagem-fina`); falta decidir a forma (dropdown, só ícones,
+   duas linhas).
+
+Os itens 1, 2 e 5 são os que mais se notam para quem chega ao repo público.
