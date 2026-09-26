@@ -8,21 +8,21 @@
 **ENGY** = o Medidor de Tensão. Supervisiona o estado — 4 estados.
 **MENTOR** = o Pedagogo. Interpreta o estado e comunica com o utilizador.
 
-Ferramenta visual de modelação de sistemas com 5 camadas (L1–L5), 7 sectores, canvas SVG interactivo. Stack: React + Vite + JavaScript (monorepo npm workspaces).
+Ferramenta visual de modelação de sistemas com 5 camadas (L1–L5), 12 sectores, canvas SVG interactivo. Stack: React + Vite + JavaScript (monorepo npm workspaces).
 
 ## Direcção do projecto
 
 > Registo completo das decisões e das divergências em **`docs/DECISOES.md`**.
 
-ARCK deixa de ser experiência privada. Passa a ser uma **ferramenta aberta e gratuita**,
-peça de portefólio para ganhar credibilidade em arquitectura de sistemas. Vector de trabalho:
+Ferramenta **aberta e gratuita (MIT)**, peça de portefólio — a ferramenta é a prova da
+arquitectura (DEC-001, DEC-015). **"Finalizado" = lançamento público (DEC-016).**
 
-1. **Consolidar e limpar** ✅ feito (ver secção abaixo)
-2. **Movimento 7** — quebrar o monólito `App.jsx` em camadas — fatias 1–4 feitas, faltam 5–6 (ver `docs/MOVIMENTO_7.md`)
-3. **Layout novo** — linguagem visual definida em `docs/referencias/layout-alvo.md` (só o visual; portas/propriedades/aninhamento ficam v2)
-4. **Renomear** — nome profissional novo (ARCK/ENGY é conceito interno) — *sessão própria, verificar domínio+marca; "Tekton" já rejeitado*
-5. **Envelopar** — README (não existe), LICENSE (0 bytes), CONTRIBUTING, demo pública
-6. **Anatomia como módulos** + camadas de arquitectura limpa aplicadas ao próprio código
+1. **Consolidar e limpar** ✅
+2. **Movimento 7** — quebrar o monólito `App.jsx` ✅ (1293 → 342 linhas; `docs/MOVIMENTO_7.md`)
+3. **Envelope** ✅ — README com captura, LICENSE MIT + CC BY 4.0 (`docs/fundacao/`), lint no CI
+4. **Abrir o repositório** — tornar público + branch protection a valer (DEC-010/DEC-016)
+5. *Pós-lançamento:* Movimento 8 fatias 3–5 · layout novo (`docs/referencias/layout-alvo.md`) ·
+   mobile/touch · auditoria do modelo de camadas · nome (não bloqueia — DEC-015)
 
 ## Visão da integração — vista explodida (confirmada 2026-09-05, ver DEC-013 + `MOVIMENTO_8.md`)
 
@@ -35,11 +35,11 @@ peça de portefólio para ganhar credibilidade em arquitectura de sistemas. Vect
   escreve os seus módulos. A distinção Guiado vs. Livre é só a validação de fluxo L1→L5.
   *(DEC-014, 2026-09-06: o template de arranque M0–M5 foi abandonado — M0–M5 é processo, não
   camada.)*
-- **Estado:** Fatia 1 (modelo + reducer) e Fatia 2a (painel lateral de módulos) **feitas**
-  (branch `mov7-fatia5`, ainda não em `main`). Fatia 2b **cancelada**. Próxima: Fatia 3
-  (`PROMOVER_MODULO` / sub-diagramas) — ver `docs/MOVIMENTO_8.md`.
+- **Estado:** Fatia 1 (modelo + reducer) e Fatia 2a (painel lateral de módulos) **feitas e em
+  `main`** (v2.0.0). Fatia 2b **cancelada**. Fatia 3 (`PROMOVER_MODULO` / sub-diagramas) é
+  pós-lançamento (DEC-016) — ver `docs/MOVIMENTO_8.md`.
 
-## Estado actual (2026-08-31)
+## Estado actual (2026-09-26)
 
 ### Movimentos concluídos ✅
 
@@ -49,44 +49,22 @@ peça de portefólio para ganhar credibilidade em arquitectura de sistemas. Vect
 | 1 | Coração soberano | `dominio.ts`, `arck-validador.ts`, `engy-tensao.ts`, `mentor.ts` |
 | 2 | Testes que provam o coração | 53 testes (42 domínio + 11 fronteira), 0 falhas |
 | 3 | Contrato (porta do coração) | `contratos.ts`, `servico.ts` — IArck, IEngy, IMentor |
-| 4 | Matar 1ª cópia — `useArckCore.js` consome `@arck/core` | Bug modo Livre corrigido; `tensao` real; alias Vite; `estadoTensao` exportado |
-| 5 | Matar 2ª cópia — `App.jsx` consome `@arck/core` directamente | `validNext` eliminado das decisões; ENGY mede; INÉRCIA mostra texto |
-| 6 | CI anti-recaída (EV-18) | CI verde — 3 jobs: testes + isolamento + build. ⚠️ **Branch protection configurada mas NÃO enforced** (repo privado, plano Free — ver DEC-010). O portão automático só passa a valer quando o repo for público. |
+| 4 | Matar 1ª cópia — `useArckCore.js` consome `@arck/core` | Bug modo Livre corrigido; alias Vite |
+| 5 | Matar 2ª cópia — `App.jsx` consome `@arck/core` directamente | ENGY mede; INÉRCIA mostra texto |
+| 6 | CI anti-recaída (EV-18) | 3 jobs: testes (+ lint desde DEC-016) · isolamento · build. Branch protection **só vale com o repo público** (DEC-010) |
+| 7 | Quebrar o monólito `App.jsx` | 1293 → 342 linhas; App = composição; 13 componentes + 6 hooks |
 
-### Consolidação + Movimento 7 (fatias 1–4) — PR #1
-
-Feito:
-- Lixo removido da raiz; ficheiros de referência → `docs/referencias/`
-- Método consolidado → `docs/fundacao/` (antes disperso). Ver `docs/fundacao/README.md`
-- Movimento 7 fatias 1–4 (`config/`, `lib/`, `infra/`, `hooks/projeto-reducer.js`); órfãos apagados
-- Testes: `ui-web` em vitest+jsdom+RTL (57); suite total 110. Ver `docs/MOVIMENTO_7.md`
-- Correcções: Tailwind v4, contraste, vista 3D
-
-Por fazer (o "envelope" — bloqueia o "abrir"):
-- `LICENSE` a 0 bytes — MIT/Apache p/ código, CC BY p/ `docs/fundacao/`
-- `README.md` não existe — escrever depois de decidir o nome
-- Movimento 7 Fatia 5 (`Canvas.jsx`) + Fatia 6
-
-### Tarefa de configuração pendente (não é código) — fecha o M6
-
-- GitHub → Settings → Branches → Branch protection rules → main → marcar os 3 jobs como required status checks:
-  - `Testes do Coracao (EV-01/EV-02)`
-  - `EV-18 - Dominio isolado (RL-02)`
-  - `Build de Producao (RL-23)`
-
-## Licenciamento — rascunho escrito, por confirmar
-
-Peça de portefólio → a atribuição é o objectivo. Ficheiros já escritos, **ainda por o Tiago
-confirmar** (repo continua privado, nada disto tem efeito até abrir):
-- **Código**: `LICENSE` na raiz — MIT. `package.json` actualizado (era `UNLICENSED`)
-- **Método** (`docs/fundacao/`): `docs/fundacao/LICENSE` — CC BY 4.0, crédito a Tiago Moraes Chaves
-- Prova de autoria e anterioridade: o próprio histórico de git (commits autorados e datados)
+- **v2.0.0** (2026-09-14, `a42d9d5`) — Movimento 7 fatias 1–6 + Movimento 8 fatias 1/2a + autosave + integridade.
+- **Lançamento (2026-09-26, DEC-016)** — refactor final, ESLint 0 problemas e no CI, 3 bugs
+  apanhados ao ligar o lint (texto `)}` no cabeçalho, `}` na Forma trancada, rotação 3D por
+  arrasto partida), versão do cabeçalho lida do `package.json`, captura do README refeita.
 
 ## Verificação rápida
 
 ```bash
-npm test        # core via tsx (53) + ui-web via vitest (57) = 110, 0 falhas
-npm run build   # vite — dist/index.html gerado
+npm test                        # core (42) + fronteira (11) + ui-web (144) = 197, 0 falhas
+npm run lint -w packages/ui-web # ESLint, 0 problemas
+npm run build                   # vite — dist/index.html gerado
 ```
 
 ## Estrutura actual
@@ -99,12 +77,12 @@ packages/core/            ← @arck/core (TypeScript puro; testes via tsx)
 
 packages/ui-web/          ← React + Vite (alias @arck/core; testes via vitest)
 ├── vite.config.js        ← alias @arck/core + config vitest (jsdom)
-├── src/config/           ← dados estáticos (camadas, sectores, formas, templates, tutorial, app-meta)
+├── src/config/           ← dados estáticos (camadas, sectores, formas, templates, tutorial, notas, modulos, app-meta)
 ├── src/lib/              ← puro (uid, core-bridge, flow-report)
 ├── src/infra/            ← efeitos colaterais (persistencia, exportar)
-├── src/hooks/projeto-reducer.js  ← useReducer: o documento, 21 acções
-├── src/componentes/      ← apresentação (FormasSVG; Canvas/No/Ligacao na Fatia 5)
-├── src/App.jsx           ← ~1072 linhas de JSX + estado efémero — Fatia 5/6 pendentes
+├── src/hooks/            ← projeto-reducer, useVistaCanvas, useArrastos, useIntegridade, useAtalhos, useColarImagem
+├── src/componentes/      ← apresentação (Cabecalho, BarraLateral, Canvas, No, Ligacao, Forma, Anotacao, …)
+├── src/App.jsx           ← só composição (~340 linhas)
 └── testes/*.test.mjs · src/**/*.test.jsx
 
 package.json (root)       ← scripts: dev, build, test, test:core, test:boundary, test:ui

@@ -1,7 +1,7 @@
 # CLAUDE.md — ARCK & ENGY Pro
 
 > Lê este ficheiro PRIMEIRO em qualquer nova sessão. É a planta do projecto.
-> Contexto detalhado: `docs/INDEX.md` · Decisões: `docs/DECISOES.md` · Movimento 7: `docs/MOVIMENTO_7.md`
+> Contexto detalhado: `docs/INDEX.md` · Decisões: `docs/DECISOES.md` · Movimentos: `docs/MOVIMENTO_7.md`, `docs/MOVIMENTO_8.md`
 
 ## O projecto
 
@@ -10,20 +10,20 @@
 - ENGY = o Medidor de Tensão (supervisiona o estado — 4 estados)
 - MENTOR = o Pedagogo (interpreta o estado, fala com o utilizador)
 - Stack: React + Vite + JavaScript, monorepo npm workspaces (`packages/core`, `packages/ui-web`)
-- Direcção: ferramenta **aberta e gratuita**, peça de portefólio (DEC-001). Repositório no GitHub.
+- Direcção: ferramenta **aberta e gratuita** (MIT), peça de portefólio (DEC-001, DEC-015). Repositório no GitHub.
 
-## Estado rápido (2026-09)
+## Estado rápido (2026-09-26)
 
-- **Movimentos 0–5 concluídos.** M6 (CI anti-recaída): jobs feitos e verdes, mas a branch
-  protection **não é enforced** em repo privado no plano Free (DEC-010) — activa quando o repo abrir.
-- **Movimento 7 (quebrar o `App.jsx`) — fatias 1–4 feitas:** `config/`, `lib/`, `infra/`,
-  `hooks/projeto-reducer.js` extraídos (App.jsx 1293 → ~1072 linhas). Órfãos `useArckCore.js`
-  e `components/MentorPanel/` apagados (RL-37). Ver `docs/MOVIMENTO_7.md`.
-- **Testes:** core em `tsx` (53), `ui-web` em **vitest + jsdom + @testing-library/react** (57) — total **110** (DEC-009).
-- **Correcções recentes:** Tailwind v4 a compilar; contraste; vista 3D utilizável.
-- **Falta no v1:** Fatia 5 (`Canvas.jsx` + `No`/`Ligacao`/`Anotacao` + `useAtalhos`), Fatia 6
-  (App = composição), e o **envelope**: `LICENSE` (0 bytes), `README.md` (não existe), nome novo.
-- **Próximo passo de código:** Movimento 7, Fatia 5.
+- **Movimentos 0–7 concluídos.** Movimento 8: fatias 1 e 2a feitas, 2b cancelada (DEC-014);
+  fatias 3–5 ficam para depois do lançamento público (DEC-016).
+- **Lançamento público (DEC-016):** refactor final do `App.jsx` feito — 885 → 342 linhas, só
+  composição; **ESLint a 0 problemas** e agora corrido no CI. README com captura actual,
+  LICENSE MIT (código) + CC BY 4.0 (`docs/fundacao/`).
+- **Testes:** core em `tsx` (42 coração + 11 fronteira), `ui-web` em **vitest + jsdom +
+  @testing-library/react** (144) — total **197**, 0 falhas.
+- **Parqueado (pós-lançamento):** Movimento 8 fatias 3–5, layout novo (DEC-005,
+  `docs/referencias/layout-alvo.md`), mobile/touch, notas redimensionáveis, auditoria do
+  modelo de camadas (dois "L1–L5": o do diagrama vs. o da arquitectura limpa do código).
 
 ## Regra de ouro para este projecto
 
@@ -34,8 +34,9 @@ validação nos componentes. Para validar uma ligação, usa a ponte `packages/u
 ## Verificação rápida
 
 ```bash
-npm test        # core (53) + ui-web (57) = 110, 0 falhas
-npm run build   # Vite produção, dist/index.html gerado
+npm test                        # core (42) + fronteira (11) + ui-web (144) = 197, 0 falhas
+npm run lint -w packages/ui-web # ESLint, 0 problemas (também corre no CI)
+npm run build                   # Vite produção, dist/index.html gerado
 ```
 
 ## As regras do domínio ARCK
@@ -68,12 +69,20 @@ packages/core/           ← @arck/core (TypeScript puro, sem React, sem UI) —
 ├── teste-coracao.ts     ← 42 testes · teste-fronteira.ts ← 11 testes
 
 packages/ui-web/src/     ← React + Vite (consome @arck/core via alias Vite) — testes via vitest
-├── config/              ← dados estáticos (camadas, sectores, formas, templates, tutorial, app-meta)
+├── config/              ← dados estáticos (camadas, sectores, formas, templates, tutorial, notas,
+│                          modulos, app-meta — a versão mostrada lê o package.json, não se escreve à mão)
 ├── lib/                 ← funções puras (uid, core-bridge, flow-report)
 ├── infra/               ← efeitos colaterais isolados (persistencia, exportar)
-├── hooks/projeto-reducer.js ← useReducer: o documento (nós, ligações, formas…), 21 acções (DEC-004)
-├── componentes/         ← apresentação (FormasSVG; No/Ligacao/Canvas na Fatia 5)
-└── App.jsx              ← ainda ~1072 linhas de JSX/estado efémero — Fatia 5/6 pendentes
+├── hooks/
+│   ├── projeto-reducer.js ← useReducer: o documento (nós, ligações, formas, módulos…) (DEC-004)
+│   ├── useVistaCanvas.js  ← zoom, pan, 3D (is3D é DERIVADO da inclinação)
+│   ├── useArrastos.js     ← estado de arrasto + o único onMouseMove
+│   ├── useIntegridade.js  ← health/estado/análise via core-bridge + pulso das barras
+│   └── useAtalhos.js · useColarImagem.js
+├── componentes/         ← apresentação: Cabecalho, BarraLateral, Canvas (+ No/Ligacao/Forma/Anotacao/
+│                          FormasSVG), PainelModulos, PainelFluxo, BarraEstado, Painel3D, Biblioteca,
+│                          Tutorial, ModalSector, ModalGuardarModelo, IconeCamada, LimiteDeErro
+└── App.jsx              ← só composição (~340 linhas): documento + callbacks de domínio + layout
 packages/ui-web/testes/  ← testes puros (vitest) · src/**/*.test.jsx ← testes de componente
 ```
 

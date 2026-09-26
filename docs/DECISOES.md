@@ -335,3 +335,31 @@ os testes a passar e o `DECISOES.md`, não por fotografia de campanha. As marcas
 `docs/POSICIONAMENTO.md` (DEC-011), **depois** de a `mov7-fatia5` estar merjada em `main` —
 o README apresenta o repo como prova ("funciona, testes passam") e isso tem de ser verdade
 em `main`, não numa branch com 20 commits por integrar.
+
+---
+
+## DEC-016 — Linha de chegada: "finalizado" = lançamento público
+**Data:** 2026-09-26 · **Decisão de:** Tiago Moraes Chaves
+
+O Arquitecto pediu para "finalizar o ARCK". Havia três frentes abertas (refactor do
+`App.jsx`, Movimento 8 fatias 3–5, layout novo) e nenhuma linha de chegada definida — o
+risco era "finalizar" nunca acontecer. O Engenheiro propôs três leituras; escolhida:
+
+> **Lançamento público** — refactor do `App.jsx`, lint a zero, `CLAUDE.md`/`INDEX.md`
+> actualizados, repositório tornado público com o CI a valer como portão.
+
+**Fica de fora, para depois do lançamento:** Movimento 8 fatias 3–5 (sub-diagramas),
+layout novo (DEC-005), mobile/touch. Não bloqueiam a prova — o que está em `main`
+funciona, está testado e está documentado.
+
+**O que o fecho encontrou (e por isso vale a pena registar):** os "2 erros de lint de
+baseline" tolerados desde o Movimento 7 não eram os `react-hooks/refs` que se julgava —
+eram **erros de parsing** em `App.jsx` e `Forma.jsx` (um `)}` e um `}` a mais). O
+esbuild tolerava-os, os testes passavam, mas o ESLint não conseguia ler os dois ficheiros
+e por isso não os analisava de todo. Esconderam: (1) o `)}` **visível** no cabeçalho da
+app (e na captura do README); (2) a **rotação 3D por arrasto partida** — `handleMouseMove`
+ficava com `draggingRot=null` numa closure obsoleta. Os três corrigidos com teste de
+regressão primeiro. **Causa raiz:** o CI não corria lint. Passou a correr (job 1).
+
+**Lição (para a fundação):** um erro "tolerado como baseline" tem de ser lido, não
+contado. Um erro de parsing não é um aviso — é um ficheiro inteiro fora da rede.

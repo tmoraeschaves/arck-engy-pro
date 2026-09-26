@@ -309,3 +309,21 @@ fechar a porta com um modelo rígido de mais.
 
 > **Actualização 2026-09-05:** deixou de ser v2. O Arquitecto promoveu-o a prioridade
 > (DEC-013) — ver **`docs/MOVIMENTO_8.md`**. Fatia 1 (modelo de dados + reducer) feita.
+
+## Fecho (2026-09-26, DEC-016) — App.jsx = composição de verdade
+
+A Fatia 6 de 2026-09-05 deixou o `App.jsx` com ~850 linhas: cabeçalho, barra lateral,
+painel 3D, biblioteca, tutorial e modais continuavam lá dentro. Concluído o que a
+estrutura-alvo acima previa:
+
+- **Componentes novos:** `Cabecalho` (com as barras de integridade e o input de importação),
+  `BarraLateral`, `BarraEstado`, `PainelFluxo`, `Painel3D`, `Biblioteca`, `Tutorial`,
+  `ModalSector`, `ModalGuardarModelo`.
+- **Hooks novos:** `useArrastos` (o `onMouseMove` e o estado de arrasto — substitui a
+  ideia de `useFormas`/`useDiagrama` separados, já que o mouse-move é um só despachante),
+  `useIntegridade` (em vez de calcular health/análise no App).
+- **Resultado:** `App.jsx` 885 → 342 linhas (o alvo de ~120 era optimista: o App mantém o
+  estado de interacção partilhado entre Canvas, atalhos e painéis e os callbacks de
+  domínio — mover isso para mais hooks só trocaria props por parâmetros).
+- **ESLint a 0** — ver DEC-016: os "2 erros de baseline" eram parsing errors que escondiam
+  `App.jsx` e `Forma.jsx` do lint; ao corrigi-los apareceram 2 bugs reais.
