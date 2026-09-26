@@ -2,7 +2,9 @@
 # EV-18: a regra "domínio não importa UI/infra" vira lei automática.
 #
 # O que este workflow garante:
-#   1. Testes passam: core via tsx (53) + ui-web via vitest (57) = 110
+#   1. Testes passam (core via tsx + fronteira + ui-web via vitest) e o ESLint
+#      da ui-web não tem erros — um erro de parsing esconde o ficheiro inteiro
+#      do lint (aconteceu com App.jsx e Forma.jsx até à v2.0.0)
 #   2. Build Vite produção compila limpo
 #   3. O core (packages/core/src/) não importa nada de fora dele próprio
 #
@@ -49,6 +51,9 @@ jobs:
 
       - name: Correr testes da UI (ponte + fluxo — RL-PONTE-01)
         run: npm run test:ui
+
+      - name: Lint da UI (ESLint — 0 erros)
+        run: npm run lint -w packages/ui-web
 
   # ────────────────────────────────────────────────────────────────
   # JOB 2 — EV-18: o domínio não pode importar UI nem infra
