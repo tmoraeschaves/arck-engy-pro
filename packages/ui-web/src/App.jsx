@@ -208,7 +208,9 @@ export default function App() {
     if (cutMode && cutStart) {
       setCutEnd({ x:cx, y:cy });
     }
-  }, [draggingLib, resizingShape, draggingNode, draggingShape, isPanning, cutMode, cutStart, zoom, offset, snapToGrid]);
+  }, [dragging3DPanel, draggingRot, is3D, draggingLib, resizingShape, draggingNode, draggingShape,
+      isPanning, panStart, cutMode, cutStart, zoom, offset, snapToGrid,
+      setPanel3DPos, setRotX, setRotY, setOffset, setPanStart]);
 
   // ── nós ───────────────────────────────────────────────────────────────────
   // Nasce à direita do centro da área visível (não amontoado no canto superior

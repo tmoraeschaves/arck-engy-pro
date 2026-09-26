@@ -241,3 +241,22 @@ describe("Canvas — imagem de fundo por arrastar ou colar", () => {
     expect(fundo).toHaveAttribute("src", expect.stringMatching(/^data:/));
   });
 });
+
+describe("Canvas — rotação 3D com o botão direito", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("em vista 3D, botão direito + arrastar roda o diagrama (o eixo Y muda)", async () => {
+    const { user, container } = await arrancar();
+    await user.click(screen.getByTitle("Adicionar SENSÓRIA"));
+    await user.click(screen.getByTitle("Rotação 3D"));
+    await user.click(screen.getByText(/INACTIVA/));        // liga a vista 3D (inclinação inicial Y = -25°)
+    const eixoY = () => screen.getByText("Eixo Y — Rotação").nextElementSibling.textContent;
+    expect(eixoY()).toBe("-25°");
+
+    fireEvent.mouseDown(container.querySelector("main"), { button: 2, clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(areaDeTrabalho(container), { clientX: 150, clientY: 100 }); // +50px → +20°
+    fireEvent.mouseUp(window);
+
+    expect(eixoY()).toBe("-5°");
+  });
+});
