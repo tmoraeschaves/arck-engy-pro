@@ -82,4 +82,10 @@ describe("App + reducer do projecto", () => {
     expect(screen.queryByText(/USAR ENGENHARIA POR PADRÃO/i)).not.toBeInTheDocument();
     expect(contaNos()).toBe(2);
   });
+
+  it("cabeçalho sem texto solto de JSX (regressão do ')}' junto às barras de integridade)", async () => {
+    const user = await arrancar();
+    await user.click(screen.getByTitle("Adicionar SENSÓRIA"));
+    expect(document.body.textContent).not.toContain(")}");
+  });
 });

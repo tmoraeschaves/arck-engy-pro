@@ -21,7 +21,7 @@ export function Forma({ forma, definicao, seleccionada, paraCanvas, onSelecciona
           wireframe que não preenche a bounding box) */}
       {seleccionada
         ? <rect x={forma.x - 3} y={forma.y - 3} width={forma.w + 6} height={forma.h + 6} fill="none" stroke={trancada ? "#F59E0B" : "#60A5FA"} strokeWidth="1" strokeDasharray="4,3" opacity="0.6" rx="4" style={{ pointerEvents: "none" }} />
-        : trancada && <rect x={forma.x - 3} y={forma.y - 3} width={forma.w + 6} height={forma.h + 6} fill="none" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3,4" opacity="0.35" rx="4" style={{ pointerEvents: "none" }} />}}
+        : trancada && <rect x={forma.x - 3} y={forma.y - 3} width={forma.w + 6} height={forma.h + 6} fill="none" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3,4" opacity="0.35" rx="4" style={{ pointerEvents: "none" }} />}
       <g data-testid="forma" data-forma-id={forma.id}
         onMouseDown={e => {
           e.stopPropagation();

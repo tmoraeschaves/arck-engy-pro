@@ -69,4 +69,11 @@ describe("Forma", () => {
     fireEvent.click(container.querySelector('[data-testid="trava-forma"]'));
     expect(onAlternarTrava).toHaveBeenCalledWith("s1");
   });
+  it("trancada sem selecção: nenhum texto solto no SVG (regressão do '}' a mais)", () => {
+    const { container } = render(
+      <svg><Forma forma={{ ...forma, locked: true }} definicao={definicao} seleccionada={false} paraCanvas={paraCanvas}
+        onSeleccionar={() => {}} onIniciarArrasto={() => {}} onIniciarRedimensionar={() => {}} onRemover={() => {}} /></svg>,
+    );
+    expect(container.textContent).not.toContain("}");
+  });
 });

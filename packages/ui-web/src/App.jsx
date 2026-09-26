@@ -452,7 +452,6 @@ export default function App() {
               </div>
             );
           })()}
-          )}
 
           {/* brand */}
           <div className="ml-3 text-right flex-shrink-0">
