@@ -20,7 +20,8 @@ arquitectura (DEC-001, DEC-015). **"Finalizado" = lançamento público (DEC-016)
 1. **Consolidar e limpar** ✅
 2. **Movimento 7** — quebrar o monólito `App.jsx` ✅ (1293 → 342 linhas; `docs/MOVIMENTO_7.md`)
 3. **Envelope** ✅ — README com captura, LICENSE MIT + CC BY 4.0 (`docs/fundacao/`), lint no CI
-4. **Abrir o repositório** — tornar público + branch protection a valer (DEC-010/DEC-016)
+4. **Abrir o repositório** ✅ — público desde 2026-09-26 (v2.1.0); branch protection activa em `main`
+   (3 checks obrigatórios, sem force-push; administrador pode fazer push directo — `enforce_admins` desligado)
 5. *Pós-lançamento:* Movimento 8 fatias 3–5 · layout novo (`docs/referencias/layout-alvo.md`) ·
    mobile/touch · auditoria do modelo de camadas · nome (não bloqueia — DEC-015)
 
@@ -51,7 +52,7 @@ arquitectura (DEC-001, DEC-015). **"Finalizado" = lançamento público (DEC-016)
 | 3 | Contrato (porta do coração) | `contratos.ts`, `servico.ts` — IArck, IEngy, IMentor |
 | 4 | Matar 1ª cópia — `useArckCore.js` consome `@arck/core` | Bug modo Livre corrigido; alias Vite |
 | 5 | Matar 2ª cópia — `App.jsx` consome `@arck/core` directamente | ENGY mede; INÉRCIA mostra texto |
-| 6 | CI anti-recaída (EV-18) | 3 jobs: testes (+ lint desde DEC-016) · isolamento · build. Branch protection **só vale com o repo público** (DEC-010) |
+| 6 | CI anti-recaída (EV-18) | 3 jobs: testes (+ lint desde DEC-016) · isolamento · build. Branch protection **activa** desde que o repo ficou público (2026-09-26) — fecha a DEC-010 |
 | 7 | Quebrar o monólito `App.jsx` | 1293 → 342 linhas; App = composição; 13 componentes + 6 hooks |
 
 - **v2.0.0** (2026-09-14, `a42d9d5`) — Movimento 7 fatias 1–6 + Movimento 8 fatias 1/2a + autosave + integridade.

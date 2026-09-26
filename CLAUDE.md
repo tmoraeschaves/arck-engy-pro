@@ -18,7 +18,8 @@
   fatias 3–5 ficam para depois do lançamento público (DEC-016).
 - **Lançamento público (DEC-016):** refactor final do `App.jsx` feito — 885 → 342 linhas, só
   composição; **ESLint a 0 problemas** e agora corrido no CI. README com captura actual,
-  LICENSE MIT (código) + CC BY 4.0 (`docs/fundacao/`).
+  LICENSE MIT (código) + CC BY 4.0 (`docs/fundacao/`). **Repositório público desde 2026-09-26
+  (v2.1.0)** — branch protection activa em `main` (3 checks obrigatórios; fecha a DEC-010).
 - **Testes:** core em `tsx` (42 coração + 11 fronteira), `ui-web` em **vitest + jsdom +
   @testing-library/react** (144) — total **197**, 0 falhas.
 - **Parqueado (pós-lançamento):** Movimento 8 fatias 3–5, layout novo (DEC-005,
