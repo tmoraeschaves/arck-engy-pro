@@ -1,11 +1,14 @@
 import { useCallback, useState } from "react";
 import { GRID_SIZE, LIMITE_3D } from "../config/app-meta.js";
+import { TAMANHO_MINIMO_CONTENTOR } from "../config/contentores.js";
+import { deslocarConteudo, redimensionarRect } from "../lib/contentores.js";
 
 /**
  * ARRASTOS (L2 · aplicação) — o estado efémero de "o que está a ser arrastado agora"
  * e o único onMouseMove que o interpreta. Prioridade: painel 3D → rotação 3D →
- * (vista 3D bloqueia o resto) → biblioteca → redimensionar forma → nó → forma →
- * pan → linha de corte. O fim de qualquer arrasto (mouseup) está no useAtalhos.
+ * (vista 3D bloqueia o resto) → biblioteca → desenhar contentor → redimensionar
+ * forma/contentor → nó → forma → contentor → pan → linha de corte. O fim de qualquer
+ * arrasto (mouseup) está no useAtalhos.
  *
  * `vista` é o que useVistaCanvas devolve; `corte` = { cutMode, cutStart, setCutEnd }.
  */
@@ -15,6 +18,10 @@ export function useArrastos({ vista, corte, snapToGrid, canvasRef, dispatch }) {
   const [resizingShape, setResizingShape] = useState(null); // {id, corner, ox,oy,ow,oh, mx,my}
   const [libPos, setLibPos] = useState({ x: 860, y: 70 });
   const [draggingLib, setDraggingLib] = useState(null);     // {sx,sy,ox,oy}
+  // contentores (DEC-018): arrastar leva o conteúdo capturado no início (lib/contentores)
+  const [draggingContainer, setDraggingContainer] = useState(null);   // {id, mx,my, x0,y0, conteudo}
+  const [resizingContainer, setResizingContainer] = useState(null);   // {id, corner, ox,oy,ow,oh, mx,my}
+  const [desenhoContentor, setDesenhoContentor] = useState(null);     // {x0,y0,x1,y1} em coords do canvas
 
   const {
     zoom, offset, setOffset, isPanning, panStart, setPanStart, is3D,
@@ -44,15 +51,19 @@ export function useArrastos({ vista, corte, snapToGrid, canvasRef, dispatch }) {
     const cx = (e.clientX - rect.left - offset.x) / zoom;
     const cy = (e.clientY - rect.top - offset.y) / zoom;
 
+    if (desenhoContentor) {
+      setDesenhoContentor(d => d && { ...d, x1: cx, y1: cy });
+      return;
+    }
     if (resizingShape) {
-      const dx = (e.clientX - resizingShape.mx) / zoom;
-      const dy = (e.clientY - resizingShape.my) / zoom;
-      let { ox: x, oy: y, ow: w, oh: h } = resizingShape;
-      if (resizingShape.corner.includes("r")) w = Math.max(40, resizingShape.ow + dx);
-      if (resizingShape.corner.includes("b")) h = Math.max(40, resizingShape.oh + dy);
-      if (resizingShape.corner.includes("l")) { x = resizingShape.ox + dx; w = Math.max(40, resizingShape.ow - dx); }
-      if (resizingShape.corner.includes("t")) { y = resizingShape.oy + dy; h = Math.max(40, resizingShape.oh - dy); }
-      dispatch({ tipo: "REDIMENSIONAR_FORMA", id: resizingShape.id, x, y, w, h });
+      const dx = (e.clientX - resizingShape.mx) / zoom, dy = (e.clientY - resizingShape.my) / zoom;
+      dispatch({ tipo: "REDIMENSIONAR_FORMA", id: resizingShape.id, ...redimensionarRect(resizingShape, dx, dy, 40) });
+      return;
+    }
+    if (resizingContainer) {
+      const dx = (e.clientX - resizingContainer.mx) / zoom, dy = (e.clientY - resizingContainer.my) / zoom;
+      dispatch({ tipo: "REDIMENSIONAR_CONTENTOR", id: resizingContainer.id,
+        ...redimensionarRect(resizingContainer, dx, dy, TAMANHO_MINIMO_CONTENTOR) });
       return;
     }
     if (draggingNode) {
@@ -65,19 +76,30 @@ export function useArrastos({ vista, corte, snapToGrid, canvasRef, dispatch }) {
       dispatch({ tipo: "MOVER_FORMA", id: draggingShape.id, x: cx - draggingShape.ox, y: cy - draggingShape.oy });
       return;
     }
+    if (draggingContainer) {
+      // com snap, o deslocamento anda aos saltos da grelha — os nós lá dentro continuam nela
+      let dx = cx - draggingContainer.mx, dy = cy - draggingContainer.my;
+      if (snapToGrid) { dx = Math.round(dx/GRID_SIZE)*GRID_SIZE; dy = Math.round(dy/GRID_SIZE)*GRID_SIZE; }
+      dispatch({ tipo: "MOVER_CONTENTOR", id: draggingContainer.id,
+        x: draggingContainer.x0 + dx, y: draggingContainer.y0 + dy,
+        levar: deslocarConteudo(draggingContainer.conteudo, dx, dy) });
+      return;
+    }
     if (isPanning) {
       setOffset(p => ({ x:p.x+e.clientX-panStart.x, y:p.y+e.clientY-panStart.y }));
       setPanStart({ x:e.clientX, y:e.clientY });
       return;
     }
     if (cutMode && cutStart) setCutEnd({ x:cx, y:cy });
-  }, [dragging3DPanel, draggingRot, is3D, draggingLib, resizingShape, draggingNode, draggingShape,
+  }, [dragging3DPanel, draggingRot, is3D, draggingLib, desenhoContentor, resizingShape, resizingContainer,
+      draggingNode, draggingShape, draggingContainer,
       isPanning, panStart, cutMode, cutStart, zoom, offset, snapToGrid, canvasRef, dispatch,
       setPanel3DPos, setRotX, setRotY, setOffset, setPanStart, setCutEnd]);
 
   return {
     onMouseMove,
     setDraggingNode, setDraggingShape, setResizingShape,
+    setDraggingContainer, setResizingContainer, desenhoContentor, setDesenhoContentor,
     libPos, setDraggingLib,
   };
 }

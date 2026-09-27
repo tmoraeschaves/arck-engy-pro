@@ -17,7 +17,7 @@ describe("estado inicial e snapshot", () => {
   it("snapshot só expõe os campos do documento", () => {
     const s = snapshot(estadoInicial);
     expect(Object.keys(s).sort()).toEqual(
-      ["annotations", "bgImage", "bgLocked", "bgOpacity", "connections", "customColors", "freeMode", "nodes", "sector", "shapes"],
+      ["annotations", "bgImage", "bgLocked", "bgOpacity", "connections", "containers", "customColors", "freeMode", "nodes", "sector", "shapes"],
     );
   });
   it("acção desconhecida → mesmo estado (referência intacta)", () => {
@@ -306,5 +306,69 @@ describe("projecto inteiro", () => {
     const s1 = snapshot(cheio);
     const s2 = snapshot(r(estadoInicial, { tipo: "CARREGAR_PROJETO", projeto: s1 }));
     expect(s2).toEqual(s1);
+  });
+});
+
+describe("contentores (DEC-018)", () => {
+  const c = (id, x, y, w, h, extra = {}) => ({ id, x, y, w, h, label: "Grupo", cor: "#16A34A", estilo: "continuo", ...extra });
+
+  it("ADICIONAR / REDIMENSIONAR / REMOVER_CONTENTOR", () => {
+    let e = r(estadoInicial, { tipo: "ADICIONAR_CONTENTOR", contentor: c("k1", 0, 0, 100, 100) });
+    expect(e.containers).toHaveLength(1);
+    e = r(e, { tipo: "REDIMENSIONAR_CONTENTOR", id: "k1", x: 5, y: 6, w: 200, h: 150 });
+    expect(e.containers[0]).toMatchObject({ x: 5, y: 6, w: 200, h: 150 });
+    e = r(e, { tipo: "REMOVER_CONTENTOR", id: "k1" });
+    expect(e.containers).toEqual([]);
+  });
+
+  it("MOVER_CONTENTOR leva o conteúdo enviado em `levar`, e só esse", () => {
+    const e0 = {
+      ...comNos(no("n1", "L1", 50, 50), no("n2", "L2", 500, 500)),
+      containers: [c("k1", 0, 0, 200, 200), c("k2", 10, 10, 80, 80)],
+      annotations: [{ id: "a1", x: 60, y: 60, text: "" }],
+    };
+    const e = r(e0, {
+      tipo: "MOVER_CONTENTOR", id: "k1", x: 100, y: 0,
+      levar: { nodes: [{ id: "n1", x: 150, y: 50 }], containers: [{ id: "k2", x: 110, y: 10 }], annotations: [{ id: "a1", x: 160, y: 60 }] },
+    });
+    expect(e.containers.find(k => k.id === "k1")).toMatchObject({ x: 100, y: 0 });
+    expect(e.containers.find(k => k.id === "k2")).toMatchObject({ x: 110, y: 10 });
+    expect(e.nodes.find(n => n.id === "n1")).toMatchObject({ x: 150, y: 50 });
+    expect(e.nodes.find(n => n.id === "n2")).toMatchObject({ x: 500, y: 500 }); // fora: não se mexe
+    expect(e.annotations[0]).toMatchObject({ x: 160, y: 60 });
+  });
+
+  it("MOVER_CONTENTOR não arrasta um nó trancado que esteja lá dentro", () => {
+    const e0 = { ...comNos({ ...no("n1", "L1", 50, 50), locked: true }), containers: [c("k1", 0, 0, 200, 200)] };
+    const e = r(e0, { tipo: "MOVER_CONTENTOR", id: "k1", x: 100, y: 0, levar: { nodes: [{ id: "n1", x: 150, y: 50 }] } });
+    expect(e.nodes[0]).toMatchObject({ x: 50, y: 50 });
+    expect(e.containers[0]).toMatchObject({ x: 100 });
+  });
+
+  it("EDITAR_CONTENTOR muda rótulo/cor/estilo e nunca a geometria", () => {
+    let e = { ...estadoInicial, containers: [c("k1", 0, 0, 100, 100)] };
+    e = r(e, { tipo: "EDITAR_CONTENTOR", id: "k1", patch: { label: "VPC", estilo: "tracejado", x: 999, w: 1 } });
+    expect(e.containers[0]).toMatchObject({ label: "VPC", estilo: "tracejado", cor: "#16A34A", x: 0, w: 100 });
+  });
+
+  it("contentor trancado: MOVER / REDIMENSIONAR / REMOVER são no-op", () => {
+    let e = { ...estadoInicial, containers: [c("k1", 0, 0, 100, 100)] };
+    e = r(e, { tipo: "ALTERNAR_TRAVA_CONTENTOR", id: "k1" });
+    expect(e.containers[0].locked).toBe(true);
+    expect(r(e, { tipo: "MOVER_CONTENTOR", id: "k1", x: 9, y: 9 })).toBe(e);
+    expect(r(e, { tipo: "REDIMENSIONAR_CONTENTOR", id: "k1", x: 0, y: 0, w: 9, h: 9 })).toBe(e);
+    expect(r(e, { tipo: "REMOVER_CONTENTOR", id: "k1" })).toBe(e);
+  });
+
+  it("remover o contentor não apaga o que estava lá dentro", () => {
+    const e = r({ ...comNos(no("n1", "L1", 50, 50)), containers: [c("k1", 0, 0, 200, 200)] }, { tipo: "REMOVER_CONTENTOR", id: "k1" });
+    expect(e.nodes).toHaveLength(1);
+  });
+
+  it("CARREGAR_PROJETO de um JSON antigo (sem containers) → lista vazia; RESETAR limpa", () => {
+    let e = r(estadoInicial, { tipo: "CARREGAR_PROJETO", projeto: { nodes: [] } });
+    expect(e.containers).toEqual([]);
+    e = r({ ...e, containers: [c("k1", 0, 0, 100, 100)] }, { tipo: "RESETAR" });
+    expect(e.containers).toEqual([]);
   });
 });

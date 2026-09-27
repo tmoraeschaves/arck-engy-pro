@@ -260,3 +260,91 @@ describe("Canvas — rotação 3D com o botão direito", () => {
     expect(eixoY()).toBe("-5°");
   });
 });
+
+describe("Canvas — contentores de agrupamento (DEC-018)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const caixa = c => c.querySelector('[data-testid="contentor"] rect');
+  const moverNoPara = (container, no, x, y) => {
+    const t = /translate\(([-\d.]+),([-\d.]+)\)/.exec(no.getAttribute("transform"));
+    fireEvent.mouseDown(no, { clientX: +t[1] + 20, clientY: +t[2] + 20 });
+    fireEvent.mouseMove(areaDeTrabalho(container), { clientX: x, clientY: y });
+    fireEvent.mouseUp(window);
+  };
+
+  it("desenhar a caixa, dar-lhe nome, arrastá-la leva o nó que está dentro e deixa o de fora", async () => {
+    const { user, container } = await arrancar();
+
+    // desenhar: ferramenta → arrastar no canvas → largar
+    await user.click(screen.getByTitle(/Contentor — desenha uma caixa/));
+    expect(screen.getByText(/CONTENTOR — arrasta para desenhar/)).toBeTruthy();
+    fireEvent.mouseDown(container.querySelector("main"), { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(areaDeTrabalho(container), { clientX: 500, clientY: 400 });
+    expect(container.querySelector('[data-testid="contentor-rascunho"]')).toBeTruthy();
+    fireEvent.mouseUp(window);
+
+    expect(container.querySelectorAll('[data-testid="contentor"]')).toHaveLength(1);
+    expect(caixa(container).getAttribute("x")).toBe("100");
+    expect(caixa(container).getAttribute("width")).toBe("400");
+    expect(screen.queryByText(/CONTENTOR — arrasta para desenhar/)).toBeNull(); // a ferramenta desliga-se
+
+    // nasce seleccionada, com a barra de edição: renomear
+    const rotulo = screen.getByLabelText("Rótulo do contentor");
+    await user.clear(rotulo);
+    await user.type(rotulo, "VPC");
+    expect(within(container.querySelector('[data-testid="contentor-aba"]')).getByText("VPC")).toBeTruthy();
+
+    // um nó dentro, outro fora
+    await user.click(screen.getByTitle("Adicionar SENSÓRIA"));
+    await user.click(screen.getByTitle("Adicionar SENSÓRIA"));
+    const [dentro, fora] = container.querySelectorAll('[data-testid="no"]');
+    moverNoPara(container, dentro, 200, 200);
+    moverNoPara(container, fora, 700, 700);
+
+    // arrastar a caixa pela aba do rótulo
+    fireEvent.mouseDown(container.querySelector('[data-testid="contentor-aba"]'), { button: 0, clientX: 110, clientY: 110 });
+    fireEvent.mouseMove(areaDeTrabalho(container), { clientX: 160, clientY: 130 });
+    fireEvent.mouseUp(window);
+
+    expect(caixa(container).getAttribute("x")).toBe("150");
+    expect(caixa(container).getAttribute("y")).toBe("120");
+    const [d2, f2] = container.querySelectorAll('[data-testid="no"]');
+    expect(d2.getAttribute("transform")).toBe("translate(230,200)"); // (200,200) + (50,20), menos o meio-nó
+    expect(f2.getAttribute("transform")).toBe("translate(680,680)"); // não se mexeu
+  });
+
+  it("o interior da caixa não agarra o rato; Delete apaga a caixa mas não o que está dentro", async () => {
+    const { user, container } = await arrancar();
+    await user.click(screen.getByTitle(/Contentor — desenha uma caixa/));
+    fireEvent.mouseDown(container.querySelector("main"), { button: 0, clientX: 100, clientY: 100 });
+    fireEvent.mouseMove(areaDeTrabalho(container), { clientX: 500, clientY: 400 });
+    fireEvent.mouseUp(window);
+    await user.click(screen.getByTitle("Adicionar SENSÓRIA"));
+    moverNoPara(container, container.querySelector('[data-testid="no"]'), 300, 300);
+
+    expect(caixa(container).style.pointerEvents).toBe("none");
+
+    // seleccionar pela borda e apagar
+    fireEvent.mouseDown(container.querySelector('[data-testid="contentor-borda"]'), { button: 0, clientX: 100, clientY: 250 });
+    fireEvent.mouseUp(window);
+    fireEvent.keyDown(window, { key: "Delete" });
+    expect(container.querySelectorAll('[data-testid="contentor"]')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-testid="no"]')).toHaveLength(1);
+  });
+
+  it("um clique sem arrastar cria a caixa de tamanho padrão; trancada não se move", async () => {
+    const { user, container } = await arrancar();
+    await user.click(screen.getByTitle(/Contentor — desenha uma caixa/));
+    fireEvent.mouseDown(container.querySelector("main"), { button: 0, clientX: 400, clientY: 300 });
+    fireEvent.mouseUp(window);
+    expect(caixa(container).getAttribute("width")).toBe("320");
+    expect(caixa(container).getAttribute("x")).toBe("240"); // centrada no clique
+
+    fireEvent.click(container.querySelector('[data-testid="trava-contentor"]'));
+    fireEvent.mouseDown(container.querySelector('[data-testid="contentor-aba"]'), { button: 0, clientX: 250, clientY: 210 });
+    fireEvent.mouseMove(areaDeTrabalho(container), { clientX: 400, clientY: 400 });
+    fireEvent.mouseUp(window);
+    expect(caixa(container).getAttribute("x")).toBe("240");
+    expect(screen.queryByLabelText("Rótulo do contentor")).toBeNull(); // trancada: sem barra de edição
+  });
+});

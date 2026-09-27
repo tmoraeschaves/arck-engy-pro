@@ -2,7 +2,7 @@
  * construirSVG (infra/exportar) — geração pura do SVG do diagrama.
  */
 import { describe, it, expect } from "vitest";
-import { construirSVG } from "../src/infra/exportar.js";
+import { construirSVG, dimensoesSVG } from "../src/infra/exportar.js";
 
 const cor = () => "#123456";
 let t = 0;
@@ -43,5 +43,28 @@ describe("construirSVG", () => {
     // origem em x=70 e destino em x=270 depois do deslocamento de margem (mx = -70)
     expect(Number(x1)).toBeGreaterThanOrEqual(70 + 20);
     expect(Number(x2)).toBeLessThanOrEqual(270 - 20);
+  });
+});
+
+describe("construirSVG — contentores (DEC-018)", () => {
+  const vpc = { id: "vpc", x: 0, y: 0, w: 600, h: 400, label: "VPC <10.0.0.0/16>", cor: "#16A34A", estilo: "continuo" };
+  const az = { id: "az", x: 50, y: 50, w: 200, h: 200, label: "AZ", cor: "#0284C7", estilo: "tracejado" };
+
+  it("só com contentores já exporta, com rótulo escapado e contorno tracejado", () => {
+    const svg = construirSVG({ nodes: [], connections: [], shapes: [], containers: [vpc, az], corDaCamada: cor, modoLivre: false });
+    expect(svg).toContain("VPC &lt;10.0.0.0/16&gt;");
+    expect(svg).toContain('stroke-dasharray="8,5"');
+    expect(svg.indexOf("VPC")).toBeLessThan(svg.indexOf(">AZ<")); // mãe desenhada antes da filha
+  });
+
+  it("a imagem cabe a caixa inteira (canto inferior direito incluído)", () => {
+    const svg = construirSVG({ nodes: [], connections: [], shapes: [], containers: [vpc], corDaCamada: cor, modoLivre: false });
+    const { w, h } = dimensoesSVG(svg);
+    expect(w).toBeGreaterThanOrEqual(600 + 70);
+    expect(h).toBeGreaterThanOrEqual(400 + 70);
+  });
+
+  it("dimensoesSVG lê o tamanho do elemento <svg>, não do <rect> de fundo", () => {
+    expect(dimensoesSVG('<?xml version="1.0"?><svg xmlns="x" width="812" height="455"><rect width="1" height="2"/></svg>')).toEqual({ w: 812, h: 455 });
   });
 });

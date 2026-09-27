@@ -74,9 +74,11 @@ Boa parte da linguagem visual já entrou nas rondas de smoke test:
 
 Falta (é o que a DEC-005 manda fazer — só visual):
 
-1. **Containers de agrupamento** — rectângulo translúcido com rótulo ("Subsistema 1"), sem o
-   nó pertencer ao grupo no modelo. *Decisão pendente do Tiago:* como se cria (seleccionar nós
-   → agrupar, ou desenhar a caixa à mão).
+1. ✅ **Contentores de agrupamento** (2026-09-27, DEC-018) — desenhados à mão, com rótulo, cor
+   e contorno contínuo/tracejado; aninham (Região ⊃ VPC ⊃ AZ ⊃ sub-rede). Nada pertence ao
+   grupo no modelo; arrastar a caixa leva o que está geometricamente lá dentro. *Por fazer:*
+   "agrupar a selecção" (precisa de selecção múltipla); ligações que atravessam rótulos de
+   contentores (mesma família do item 6).
 2. ✅ **Setas visíveis** (2026-09-27) — a linha ia de centro a centro e a seta ficava debaixo do
    nó de destino. Agora `lib/geometria.js` (`aparaNaBorda`) apara-a à borda dos nós, no canvas e
    na exportação SVG/PNG; seta um pouco maior. A borda de baixo conta com o rótulo (`ROTULO`),

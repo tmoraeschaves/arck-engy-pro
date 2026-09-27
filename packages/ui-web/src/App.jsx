@@ -4,6 +4,8 @@ import { uid } from "./lib/uid.js";
 import { LAYERS } from "./config/camadas.js";
 import { SECTORS } from "./config/sectores.js";
 import { GRID_SIZE } from "./config/app-meta.js";
+import { CORES_CONTENTOR, ROTULO_CONTENTOR } from "./config/contentores.js";
+import { conteudoDe, rectDoDesenho } from "./lib/contentores.js";
 import { toNo, toLigacoes, validarNovaLigacao } from "./lib/core-bridge.js";
 import { computeFlowReport } from "./lib/flow-report.js";
 import {
@@ -41,7 +43,7 @@ export default function App() {
     if (guardado) return { ...estadoInicial, ...guardado };
     return { ...estadoInicial, sector: localStorage.getItem("ae_sector") || null };
   });
-  const { nodes, connections, shapes, annotations, customColors, bgImage, bgOpacity, bgLocked, sector, freeMode } = projeto;
+  const { nodes, connections, shapes, containers, annotations, customColors, bgImage, bgOpacity, bgLocked, sector, freeMode } = projeto;
 
   const canvasRef = useRef(null);
   const bgInputRef = useRef(null);
@@ -54,6 +56,8 @@ export default function App() {
 
   const [selectedNode, setSelectedNode] = useState(null);
   const [selectedShapeId, setSelectedShapeId] = useState(null);
+  const [selectedContainerId, setSelectedContainerId] = useState(null);
+  const [contentorNovoId, setContentorNovoId] = useState(null); // acabou de ser desenhado → foca o rótulo
   const [allSelected, setAllSelected] = useState(false);
   const [modulosNoId, setModulosNoId] = useState(null);
 
@@ -64,6 +68,7 @@ export default function App() {
   const [annotationMode, setAnnotationMode] = useState(false);
   const [editingAnnotId, setEditingAnnotId] = useState(null);
   const [placingShapeType, setPlacingShapeType] = useState(null);
+  const [drawingContainer, setDrawingContainer] = useState(false);
   const [showShapePicker, setShowShapePicker] = useState(false);
   const [showBgPanel, setShowBgPanel] = useState(false);
   const [snapToGrid, setSnapToGrid] = useState(false);
@@ -71,7 +76,8 @@ export default function App() {
   const [silentMode, setSilentMode] = useState(false);
   const showLabels = true; // sempre visível por agora — sem toggle na UI
 
-  const { onMouseMove, setDraggingNode, setDraggingShape, setResizingShape, libPos, setDraggingLib } =
+  const { onMouseMove, setDraggingNode, setDraggingShape, setResizingShape,
+    setDraggingContainer, setResizingContainer, desenhoContentor, setDesenhoContentor, libPos, setDraggingLib } =
     useArrastos({ vista, corte: { cutMode, cutStart, setCutEnd }, snapToGrid, canvasRef, dispatch });
 
   // ── painéis e modais ──────────────────────────────────────────────────────
@@ -149,11 +155,33 @@ export default function App() {
     if (ids.length) dispatch({ tipo: "CORTAR_LIGACOES", ids });
   }, [connections, nodes, zoom]);
 
+  // ── contentores de agrupamento (DEC-018) ──────────────────────────────────
+  // Arrastar captura o que está geometricamente dentro AGORA (nada pertence ao grupo).
+  const iniciarArrastoContentor = useCallback((id, mx, my) => {
+    const c = containers.find(k => k.id === id); if (!c) return;
+    setDraggingContainer({ id, mx, my, x0: c.x, y0: c.y,
+      conteudo: conteudoDe(c, { nodes, containers, shapes, annotations }) });
+  }, [containers, nodes, shapes, annotations, setDraggingContainer]);
+
+  const seleccionarContentor = useCallback((id) => {
+    setSelectedContainerId(id); setSelectedShapeId(null); setSelectedNode(null);
+  }, []);
+
+  const terminarDesenhoContentor = useCallback(() => {
+    if (!desenhoContentor) return;
+    const id = `grp_${uid()}`;
+    dispatch({ tipo: "ADICIONAR_CONTENTOR", contentor: {
+      id, ...rectDoDesenho(desenhoContentor), label: ROTULO_CONTENTOR, cor: CORES_CONTENTOR[0].cor, estilo: "continuo" } });
+    setDesenhoContentor(null); setDrawingContainer(false);
+    seleccionarContentor(id); setContentorNovoId(id);
+  }, [desenhoContentor, setDesenhoContentor, seleccionarContentor]);
+
   // ── atalhos globais (teclado + fim de arrasto) e colar imagem ─────────────
   useAtalhos({
-    cutMode, cutStart, cutEnd, selectedNode, selectedShapeId, zoom, offset, canvasRef,
-    cutConnections, removeNode, dispatch,
+    cutMode, cutStart, cutEnd, selectedNode, selectedShapeId, selectedContainerId, zoom, offset, canvasRef,
+    cutConnections, removeNode, dispatch, terminarDesenhoContentor,
     setDraggingNode, setIsPanning, setDraggingShape, setResizingShape, setDraggingLib,
+    setDraggingContainer, setResizingContainer, setSelectedContainerId, setDrawingContainer,
     setDraggingRot, setDragging3DPanel, setCutMode, setCutStart, setCutEnd,
     setSelectedNode, setSelectedShapeId, setAnnotationMode, setEditingAnnotId,
     setPlacingShapeType, setShowShapePicker, setAllSelected, setIs3D, setZoom, setOffset,
@@ -224,18 +252,18 @@ export default function App() {
   const resetSystem = useCallback(() => {
     if (window.confirm("Resetar toda a arquitectura?")) {
       dispatch({ tipo: "RESETAR" });
-      setSelectedNode(null); setSelectedShapeId(null);
+      setSelectedNode(null); setSelectedShapeId(null); setSelectedContainerId(null);
       apagarProjetoLocal();
     }
   }, []);
 
   // ── exportação ────────────────────────────────────────────────────────────
   const buildSVG = useCallback(
-    () => construirSVG({ nodes, connections, shapes, corDaCamada: layerColor, modoLivre: freeMode }),
-    [nodes, connections, shapes, layerColor, freeMode],
+    () => construirSVG({ nodes, connections, shapes, containers, corDaCamada: layerColor, modoLivre: freeMode }),
+    [nodes, connections, shapes, containers, layerColor, freeMode],
   );
   const exportSVG = useCallback(() => exportarSVG(buildSVG()), [buildSVG]);
-  const exportPNG = useCallback(() => exportarPNG(buildSVG(), nodes), [buildSVG, nodes]);
+  const exportPNG = useCallback(() => exportarPNG(buildSVG()), [buildSVG]);
 
   // ════════════════════════════════════════════════════════════════════════════
   return (
@@ -261,6 +289,7 @@ export default function App() {
             corte:  { fn:()=>setCutMode(p=>!p), active:cutMode },
             nota:   { fn:()=>{setAnnotationMode(p=>!p);setSelectedNode(null);}, active:annotationMode },
             formas: { fn:()=>setShowShapePicker(p=>!p), active:showShapePicker||!!placingShapeType },
+            contentor: { fn:()=>{setDrawingContainer(p=>!p);setPlacingShapeType(null);setAnnotationMode(false);}, active:drawingContainer },
             fundo:  { fn:()=>setShowBgPanel(p=>!p), active:!!bgImage||showBgPanel },
           }}
           opcoes={{
@@ -278,7 +307,7 @@ export default function App() {
 
         <Canvas
           canvasRef={canvasRef} bgInputRef={bgInputRef}
-          nodes={nodes} connections={connections} shapes={shapes} annotations={annotations}
+          nodes={nodes} connections={connections} shapes={shapes} containers={containers} annotations={annotations}
           bgImage={bgImage} bgOpacity={bgOpacity} bgLocked={bgLocked} freeMode={freeMode} silentMode={silentMode} sector={sector}
           zoom={zoom} offset={offset} is3D={is3D} rotX={rotX} rotY={rotY} rotZ={rotZ}
           draggingRot={draggingRot} centro3D={centro3D}
@@ -286,6 +315,10 @@ export default function App() {
           setDraggingRot={setDraggingRot} setIs3D={setIs3D}
           selectedNode={selectedNode} setSelectedNode={setSelectedNode}
           selectedShapeId={selectedShapeId} setSelectedShapeId={setSelectedShapeId}
+          selectedContainerId={selectedContainerId} setSelectedContainerId={setSelectedContainerId}
+          contentorNovoId={contentorNovoId} seleccionarContentor={seleccionarContentor}
+          drawingContainer={drawingContainer} desenhoContentor={desenhoContentor} setDesenhoContentor={setDesenhoContentor}
+          iniciarArrastoContentor={iniciarArrastoContentor} setResizingContainer={setResizingContainer}
           allSelected={allSelected} setAllSelected={setAllSelected}
           editingAnnotId={editingAnnotId} setEditingAnnotId={setEditingAnnotId}
           annotationMode={annotationMode} setAnnotationMode={setAnnotationMode}
@@ -332,7 +365,7 @@ export default function App() {
 
       {showSaveModel && (
         <ModalGuardarModelo onGuardar={saveModel} onFechar={()=>setShowSaveModel(false)}
-          resumo={`${nodes.length} nós · ${connections.length} links · ${shapes.length} formas · ${activeSector.icon} ${activeSector.name}`} />
+          resumo={`${nodes.length} nós · ${connections.length} links · ${shapes.length} formas · ${containers.length} grupos · ${activeSector.icon} ${activeSector.name}`} />
       )}
 
       <button onClick={()=>{setTutorialStep(0);setShowTutorial(true);}}

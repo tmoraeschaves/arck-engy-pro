@@ -8,6 +8,8 @@ import { No } from "./No.jsx";
 import { Ligacao, MarcadoresLigacao } from "./Ligacao.jsx";
 import { Anotacao } from "./Anotacao.jsx";
 import { Forma } from "./Forma.jsx";
+import { Contentor } from "./Contentor.jsx";
+import { porAreaDecrescente } from "../lib/contentores.js";
 
 /**
  * O mundo do diagrama: o `<main>` com o mundo 3D, a camada SVG (formas, ligações,
@@ -17,12 +19,14 @@ import { Forma } from "./Forma.jsx";
 export function Canvas({
   canvasRef, bgInputRef,
   // documento
-  nodes, connections, shapes, annotations, bgImage, bgOpacity, bgLocked, freeMode, silentMode, sector,
+  nodes, connections, shapes, containers, annotations, bgImage, bgOpacity, bgLocked, freeMode, silentMode, sector,
   // vista
   zoom, offset, is3D, rotX, rotY, rotZ, draggingRot, centro3D,
   setZoom, setIsPanning, setPanStart, setDraggingRot, setIs3D,
   // selecção e modos de interacção
   selectedNode, setSelectedNode, selectedShapeId, setSelectedShapeId, allSelected, setAllSelected,
+  selectedContainerId, setSelectedContainerId, contentorNovoId, seleccionarContentor,
+  drawingContainer, desenhoContentor, setDesenhoContentor, iniciarArrastoContentor, setResizingContainer,
   editingAnnotId, setEditingAnnotId, annotationMode, setAnnotationMode,
   placingShapeType, setPlacingShapeType, showShapePicker, setShowShapePicker,
   cutMode, cutStart, cutEnd, showGrid, showBgPanel, setShowBgPanel,
@@ -35,13 +39,18 @@ export function Canvas({
 }) {
   return (
     <main ref={canvasRef}
-      className={`flex-1 relative overflow-hidden ${annotationMode||placingShapeType?"cursor-crosshair":""}`}
+      className={`flex-1 relative overflow-hidden ${annotationMode||placingShapeType||drawingContainer?"cursor-crosshair":""}`}
       style={{background:"#FAFAFA"}}
       onContextMenu={(e)=>{ if(is3D) e.preventDefault(); }}
       onMouseDown={(e)=>{
         // 3D right-click drag
         if (is3D && e.button===2) { e.preventDefault(); setDraggingRot({sx:e.clientX,sy:e.clientY,rx:rotX,ry:rotY}); return; }
         if (is3D) return; // block all edit interactions in 3D mode
+        if (drawingContainer&&e.button===0) {
+          const p=paraCanvas(e.clientX,e.clientY);
+          setDesenhoContentor({x0:p.x,y0:p.y,x1:p.x,y1:p.y});
+          e.stopPropagation(); return;
+        }
         if ((annotationMode||placingShapeType)&&e.button===0&&canvasRef.current) {
           const r=canvasRef.current.getBoundingClientRect();
           const cx=(e.clientX-r.left-offset.x)/zoom, cy=(e.clientY-r.top-offset.y)/zoom;
@@ -50,7 +59,7 @@ export function Canvas({
           e.stopPropagation(); return;
         }
         if (e.button===1||(e.button===0&&e.altKey)){setIsPanning(true);setPanStart({x:e.clientX,y:e.clientY});}
-        if (e.button===0&&!annotationMode&&!placingShapeType){setAllSelected(false);setSelectedShapeId(null);}
+        if (e.button===0&&!annotationMode&&!placingShapeType){setAllSelected(false);setSelectedShapeId(null);setSelectedContainerId(null);}
       }}
       onWheel={(e)=>{e.preventDefault();setZoom(p=>Math.max(0.2,Math.min(3,p-e.deltaY*0.001)));}}
       onDragOver={(e)=>{ e.preventDefault(); }}
@@ -157,13 +166,33 @@ export function Canvas({
           {showGrid && <rect x={-100000} y={-100000} width={200000} height={200000}
             fill="url(#grelha-pontos)" style={{pointerEvents:"none"}} />}
 
+          {/* Contentores de agrupamento (DEC-018) — por baixo de tudo; os maiores primeiro,
+              para uma caixa aninhada (sub-rede dentro da VPC) ficar por cima da mãe */}
+          {porAreaDecrescente(containers).map(c => (
+            <Contentor key={c.id} contentor={c} seleccionado={selectedContainerId === c.id} novo={contentorNovoId === c.id}
+              paraCanvas={paraCanvas}
+              onSeleccionar={seleccionarContentor}
+              onIniciarArrasto={iniciarArrastoContentor}
+              onIniciarRedimensionar={setResizingContainer}
+              onAlternarTrava={id => dispatch({ tipo: "ALTERNAR_TRAVA_CONTENTOR", id })}
+              onEditar={(id, patch) => dispatch({ tipo: "EDITAR_CONTENTOR", id, patch })}
+              onRemover={id => { dispatch({ tipo: "REMOVER_CONTENTOR", id }); setSelectedContainerId(null); }} />
+          ))}
+          {desenhoContentor && (
+            <rect data-testid="contentor-rascunho"
+              x={Math.min(desenhoContentor.x0, desenhoContentor.x1)} y={Math.min(desenhoContentor.y0, desenhoContentor.y1)}
+              width={Math.abs(desenhoContentor.x1 - desenhoContentor.x0)} height={Math.abs(desenhoContentor.y1 - desenhoContentor.y0)}
+              rx={6} fill="#16A34A" fillOpacity={0.06} stroke="#16A34A" strokeWidth={1.5} strokeDasharray="6,4"
+              style={{ pointerEvents: "none" }} />
+          )}
+
           {/* Formas com alças de redimensionar */}
           {shapes.map(sh => {
             const def = GEO_SHAPES.find(s => s.id === sh.type); if (!def) return null;
             return (
               <Forma key={sh.id} forma={sh} definicao={def} seleccionada={selectedShapeId === sh.id}
                 paraCanvas={paraCanvas}
-                onSeleccionar={setSelectedShapeId}
+                onSeleccionar={id => { setSelectedShapeId(id); setSelectedContainerId(null); }}
                 onIniciarArrasto={setDraggingShape}
                 onIniciarRedimensionar={setResizingShape}
                 onAlternarTrava={id => dispatch({ tipo: "ALTERNAR_TRAVA_FORMA", id })}
@@ -227,17 +256,18 @@ export function Canvas({
       )}
 
       {/* hints */}
-      {!is3D && (annotationMode||placingShapeType||cutMode)&&(
+      {!is3D && (annotationMode||placingShapeType||cutMode||drawingContainer)&&(
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-1.5 rounded-full text-[10px] font-bold text-white shadow-lg pointer-events-none"
-          style={{background:annotationMode?"#F59E0B":cutMode?"#EF4444":"#3B82F6"}}>
+          style={{background:annotationMode?"#F59E0B":cutMode?"#EF4444":drawingContainer?"#16A34A":"#3B82F6"}}>
           {annotationMode&&"MODO NOTA — clica no canvas · ESC cancela"}
           {placingShapeType&&`COLOCAR ${GEO_SHAPES.find(s=>s.id===placingShapeType)?.name?.toUpperCase()} — clica para posicionar · ESC cancela`}
           {cutMode&&"MODO CORTE — arrasta sobre ligações · ESC cancela"}
+          {drawingContainer&&!cutMode&&"CONTENTOR — arrasta para desenhar a caixa (ou clica) · ESC cancela"}
         </div>
       )}
 
       {/* canvas vazio */}
-      {!nodes.length&&!shapes.length&&!placingShapeType&&(
+      {!nodes.length&&!shapes.length&&!containers.length&&!placingShapeType&&!drawingContainer&&(
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <div className="text-5xl mb-4 opacity-10">⬡</div>

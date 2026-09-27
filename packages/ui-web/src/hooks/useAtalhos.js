@@ -9,9 +9,10 @@ import { useEffect } from "react";
  * que não estivesse já no App.
  */
 export function useAtalhos({
-  cutMode, cutStart, cutEnd, selectedNode, selectedShapeId, zoom, offset, canvasRef,
-  cutConnections, removeNode, dispatch,
+  cutMode, cutStart, cutEnd, selectedNode, selectedShapeId, selectedContainerId, zoom, offset, canvasRef,
+  cutConnections, removeNode, dispatch, terminarDesenhoContentor,
   setDraggingNode, setIsPanning, setDraggingShape, setResizingShape, setDraggingLib,
+  setDraggingContainer, setResizingContainer, setSelectedContainerId, setDrawingContainer,
   setDraggingRot, setDragging3DPanel, setCutMode, setCutStart, setCutEnd,
   setSelectedNode, setSelectedShapeId, setAnnotationMode, setEditingAnnotId,
   setPlacingShapeType, setShowShapePicker, setAllSelected, setIs3D, setZoom, setOffset,
@@ -19,8 +20,10 @@ export function useAtalhos({
   useEffect(() => {
     const onUp = () => {
       if (cutMode && cutStart && cutEnd) cutConnections(cutStart, cutEnd);
+      terminarDesenhoContentor(); // no-op se não havia caixa a ser desenhada
       setDraggingNode(null); setIsPanning(false); setDraggingShape(null);
       setResizingShape(null); setDraggingLib(null);
+      setDraggingContainer(null); setResizingContainer(null);
       setDraggingRot(null); setDragging3DPanel(null);
       setCutMode(false); setCutStart(null); setCutEnd(null);
     };
@@ -29,12 +32,14 @@ export function useAtalhos({
       // senão "c", "0", Delete… são engolidos a meio da frase em vez de escritos (RL de fronteira)
       const alvo = e.target;
       if (alvo && (alvo.tagName==="INPUT" || alvo.tagName==="TEXTAREA" || alvo.isContentEditable)) return;
-      if (e.key==="Escape") { setSelectedNode(null); setCutMode(false); setAnnotationMode(false); setEditingAnnotId(null); setPlacingShapeType(null); setShowShapePicker(false); setAllSelected(false); setIs3D(false); }
+      if (e.key==="Escape") { setSelectedNode(null); setCutMode(false); setAnnotationMode(false); setEditingAnnotId(null); setPlacingShapeType(null); setShowShapePicker(false); setAllSelected(false); setIs3D(false); setDrawingContainer(false); setSelectedContainerId(null); }
       if (e.key==="a" && e.ctrlKey) { e.preventDefault(); setAllSelected(p=>!p); setSelectedNode(null); }
       if (e.key==="Delete") {
         // nó trancado: o reducer recusa REMOVER_NO — a tecla não faz nada
         if (selectedNode) removeNode(selectedNode.id);
         if (selectedShapeId) { dispatch({ tipo:"REMOVER_FORMA", id:selectedShapeId }); setSelectedShapeId(null); }
+        // contentor: apaga só a caixa, o conteúdo fica (trancado → o reducer recusa)
+        if (selectedContainerId) { dispatch({ tipo:"REMOVER_CONTENTOR", id:selectedContainerId }); setSelectedContainerId(null); }
       }
       if (e.key==="c" && !e.ctrlKey) { e.preventDefault(); setCutMode(true); }
       if (e.key==="+"||e.key==="=") setZoom(p=>Math.min(p+0.1,3));
@@ -52,9 +57,10 @@ export function useAtalhos({
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onDown);
     return () => { window.removeEventListener("mouseup",onUp); window.removeEventListener("keydown",onKey); window.removeEventListener("mousedown",onDown); };
-  }, [cutMode, cutStart, cutEnd, selectedNode, selectedShapeId, zoom, offset, canvasRef,
-      cutConnections, removeNode, dispatch,
+  }, [cutMode, cutStart, cutEnd, selectedNode, selectedShapeId, selectedContainerId, zoom, offset, canvasRef,
+      cutConnections, removeNode, dispatch, terminarDesenhoContentor,
       setDraggingNode, setIsPanning, setDraggingShape, setResizingShape, setDraggingLib,
+      setDraggingContainer, setResizingContainer, setSelectedContainerId, setDrawingContainer,
       setDraggingRot, setDragging3DPanel, setCutMode, setCutStart, setCutEnd,
       setSelectedNode, setSelectedShapeId, setAnnotationMode, setEditingAnnotId,
       setPlacingShapeType, setShowShapePicker, setAllSelected, setIs3D, setZoom, setOffset]);
