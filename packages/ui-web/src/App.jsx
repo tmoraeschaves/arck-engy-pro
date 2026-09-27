@@ -13,7 +13,7 @@ import {
   descarregarProjeto, lerFicheiroJSON, lerModelos, guardarModelos, guardarSectorLocal,
 } from "./infra/persistencia.js";
 import { construirSVG, exportarSVG, exportarPNG } from "./infra/exportar.js";
-import { projetoReducer, estadoInicial, snapshot } from "./hooks/projeto-reducer.js";
+import { projetoReducer, estadoInicial, snapshot, diagramaEm, PROFUNDIDADE_MAXIMA } from "./hooks/projeto-reducer.js";
 import { useVistaCanvas } from "./hooks/useVistaCanvas.js";
 import { useArrastos } from "./hooks/useArrastos.js";
 import { useIntegridade } from "./hooks/useIntegridade.js";
@@ -38,12 +38,28 @@ export default function App() {
   // ── documento (nós, ligações, formas, anotações, cores, fundo, sector, modo) ──
   // Arranca do autosave (recupera onde o utilizador parou); se não houver, começa
   // vazio com o último sector escolhido.
-  const [projeto, dispatch] = useReducer(projetoReducer, undefined, () => {
+  const [projeto, despacharRaiz] = useReducer(projetoReducer, undefined, () => {
     const guardado = lerProjetoLocal();
     if (guardado) return { ...estadoInicial, ...guardado };
     return { ...estadoInicial, sector: localStorage.getItem("ae_sector") || null };
   });
-  const { nodes, connections, shapes, containers, annotations, customColors, bgImage, bgOpacity, bgLocked, sector, freeMode } = projeto;
+  const { customColors, bgImage, bgOpacity, bgLocked, sector, freeMode } = projeto;
+
+  // ── nível actual (Movimento 8, Fatia 4) ───────────────────────────────────
+  // `caminho` = onde estamos: [] = raiz; cada passo entra no sub-diagrama de um módulo.
+  // Se o caminho deixar de existir (nó apagado, módulo removido, reset, import), recua
+  // sozinho até ao último nível que ainda existe — nunca fica a apontar para o vazio.
+  const [caminhoPedido, setCaminho] = useState([]);
+  const caminho = useMemo(() => {
+    let c = caminhoPedido;
+    while (c.length && !diagramaEm(projeto, c)) c = c.slice(0, -1);
+    return c;
+  }, [projeto, caminhoPedido]);
+  const diagrama = useMemo(() => diagramaEm(projeto, caminho), [projeto, caminho]);
+  const { nodes, connections, shapes, containers, annotations } = diagrama;
+  // Tudo o que o App e os filhos despacham actua no nível actual; as acções do documento
+  // (sector, modo, cores, fundo, carregar, reset) ignoram o caminho no reducer.
+  const dispatch = useCallback(accao => despacharRaiz({ ...accao, caminho }), [caminho]);
 
   const canvasRef = useRef(null);
   const bgInputRef = useRef(null);
@@ -95,6 +111,17 @@ export default function App() {
   const layerName  = useCallback(k => activeSector.names[k] || k, [activeSector]);
   const layerColor = useCallback(k => customColors[k] || LAYERS[k]?.color || "#666", [customColors]);
   const modulosNo = useMemo(() => nodes.find(n => n.id === modulosNoId) || null, [nodes, modulosNoId]);
+  // uma migalha por nível abaixo da raiz: "SERVIÇO · Autenticação"
+  const migalhas = useMemo(() => {
+    const lista = []; let d = projeto;
+    for (const { noId, moduloId } of caminho) {
+      const n = d.nodes.find(x => x.id === noId), m = n?.modules?.find(x => x.id === moduloId);
+      if (!m) break;
+      lista.push({ camada: layerName(n.layer), rotulo: m.label || "módulo", cor: layerColor(n.layer) });
+      d = m.filho;
+    }
+    return lista;
+  }, [projeto, caminho, layerName, layerColor]);
   const integridade = useIntegridade(nodes, connections, freeMode);
   const flowReport = useMemo(() => computeFlowReport(nodes, connections), [nodes, connections]);
 
@@ -120,12 +147,12 @@ export default function App() {
     let y = r ? (r.height * 0.44 - offset.y) / zoom + jitter() : 320 + jitter();
     if (snapToGrid) { x=Math.round(x/GRID_SIZE)*GRID_SIZE; y=Math.round(y/GRID_SIZE)*GRID_SIZE; }
     dispatch({ tipo: "ADICIONAR_NO", no: { id:`node_${uid()}`, layer:layerKey, x, y, createdAt:Date.now() } });
-  }, [snapToGrid, offset, zoom]);
+  }, [snapToGrid, offset, zoom, dispatch]);
 
   const removeNode = useCallback((id) => {
     dispatch({ tipo: "REMOVER_NO", id });
     setSelectedNode(prev => prev?.id === id ? null : prev);
-  }, []);
+  }, [dispatch]);
 
   const connectNodes = useCallback((targetId) => {
     if (selectedNode && selectedNode.id!==targetId) {
@@ -139,9 +166,30 @@ export default function App() {
       }
     }
     setSelectedNode(null);
-  }, [selectedNode, connections, nodes, silentMode, freeMode, layerName]);
+  }, [selectedNode, connections, nodes, silentMode, freeMode, layerName, dispatch]);
 
   const abrirModulos = useCallback((node) => { setSelectedNode(null); setModulosNoId(node.id); }, []);
+
+  // ── entrar e sair de sub-diagramas (Movimento 8, Fatia 4) ─────────────────
+  const mudarDeNivel = useCallback((novo) => {
+    setCaminho(novo);
+    setSelectedNode(null); setSelectedShapeId(null); setSelectedContainerId(null);
+    setModulosNoId(null); setAllSelected(false); setEditingAnnotId(null);
+    setZoom(1); setOffset({ x: 0, y: 0 });
+  }, [setZoom, setOffset]);
+
+  // Entra no diagrama do módulo; se ainda não o tem, promove-o primeiro (nunca além do limite).
+  const entrarNoModulo = useCallback((noId, moduloId) => {
+    const modulo = nodes.find(n => n.id === noId)?.modules?.find(m => m.id === moduloId);
+    if (!modulo) return;
+    if (!modulo.filho) {
+      if (caminho.length + 1 >= PROFUNDIDADE_MAXIMA) return;
+      dispatch({ tipo: "PROMOVER_MODULO", noId, moduloId });
+    }
+    mudarDeNivel([...caminho, { noId, moduloId }]);
+  }, [nodes, caminho, dispatch, mudarDeNivel]);
+
+  const irParaNivel = useCallback((nivel) => mudarDeNivel(caminho.slice(0, nivel)), [caminho, mudarDeNivel]);
 
   const cutConnections = useCallback((start,end) => {
     if (!start||!end) return;
@@ -153,7 +201,7 @@ export default function App() {
       return false;
     }).map(c => c.id);
     if (ids.length) dispatch({ tipo: "CORTAR_LIGACOES", ids });
-  }, [connections, nodes, zoom]);
+  }, [connections, nodes, zoom, dispatch]);
 
   // ── contentores de agrupamento (DEC-018) ──────────────────────────────────
   // Arrastar captura o que está geometricamente dentro AGORA (nada pertence ao grupo).
@@ -174,7 +222,7 @@ export default function App() {
       id, ...rectDoDesenho(desenhoContentor), label: ROTULO_CONTENTOR, cor: CORES_CONTENTOR[0].cor, estilo: "continuo" } });
     setDesenhoContentor(null); setDrawingContainer(false);
     seleccionarContentor(id); setContentorNovoId(id);
-  }, [desenhoContentor, setDesenhoContentor, seleccionarContentor]);
+  }, [desenhoContentor, setDesenhoContentor, seleccionarContentor, dispatch]);
 
   // ── atalhos globais (teclado + fim de arrasto) e colar imagem ─────────────
   useAtalhos({
@@ -189,22 +237,22 @@ export default function App() {
   useColarImagem(dispatch);
 
   // ── formas, anotações, escala ─────────────────────────────────────────────
-  const scaleLayout = useCallback((factor) => dispatch({ tipo: "ESCALAR_LAYOUT", fator: factor }), []);
+  const scaleLayout = useCallback((factor) => dispatch({ tipo: "ESCALAR_LAYOUT", fator: factor }), [dispatch]);
 
   const placeShape = useCallback((cx,cy) => {
     if (!placingShapeType) return;
     dispatch({ tipo: "ADICIONAR_FORMA", forma: { id:`shape_${uid()}`, type:placingShapeType, x:cx-70, y:cy-70, w:140, h:140 } });
     setPlacingShapeType(null);
-  }, [placingShapeType]);
+  }, [placingShapeType, dispatch]);
 
   const addAnnotation = useCallback((x,y) => {
     const id=`ann_${uid()}`;
     dispatch({ tipo: "ADICIONAR_ANOTACAO", anotacao: { id, x, y, text:"", expanded:true } });
     setEditingAnnotId(id);
-  }, []);
+  }, [dispatch]);
 
   // ── sector, modelos e persistência ────────────────────────────────────────
-  const escolherSector = useCallback((key) => { dispatch({ tipo: "DEFINIR_SECTOR", sector: key }); guardarSectorLocal(key); }, []);
+  const escolherSector = useCallback((key) => { despacharRaiz({ tipo: "DEFINIR_SECTOR", sector: key }); guardarSectorLocal(key); }, []);
 
   const selectSector = useCallback((key) => {
     escolherSector(key); setShowSectorModal(false);
@@ -224,7 +272,7 @@ export default function App() {
   }, [userModels]);
 
   const loadModel = useCallback((m) => {
-    dispatch({ tipo: "CARREGAR_PROJETO", projeto: m });
+    despacharRaiz({ tipo: "CARREGAR_PROJETO", projeto: m }); setCaminho([]);
     if (m.sector) guardarSectorLocal(m.sector);
     setShowLibrary(false);
   }, []);
@@ -233,7 +281,7 @@ export default function App() {
     const { nodes: tn, connections: tc } = t.gen();
     dispatch({ tipo: "INSERIR_TEMPLATE", nodes: tn, connections: tc });
     setShowLibrary(false);
-  }, []);
+  }, [dispatch]);
 
   const saveProject = useCallback(() => {
     const projetoSnap = snapshot(projeto);
@@ -244,14 +292,14 @@ export default function App() {
   const loadProject = useCallback(async (file) => {
     try {
       const d = await lerFicheiroJSON(file);
-      dispatch({ tipo: "CARREGAR_PROJETO", projeto: d });
+      despacharRaiz({ tipo: "CARREGAR_PROJETO", projeto: d }); setCaminho([]);
       if (d.sector) guardarSectorLocal(d.sector);
     } catch { if (!silentMode) alert("Erro ao carregar ficheiro"); }
   }, [silentMode]);
 
   const resetSystem = useCallback(() => {
     if (window.confirm("Resetar toda a arquitectura?")) {
-      dispatch({ tipo: "RESETAR" });
+      despacharRaiz({ tipo: "RESETAR" }); setCaminho([]);
       setSelectedNode(null); setSelectedShapeId(null); setSelectedContainerId(null);
       apagarProjetoLocal();
     }
@@ -331,10 +379,12 @@ export default function App() {
           dispatch={dispatch} addAnnotation={addAnnotation} placeShape={placeShape} scaleLayout={scaleLayout}
           connectNodes={connectNodes} removeNode={removeNode} abrirModulos={abrirModulos}
           layerName={layerName} layerColor={layerColor} paraCanvas={paraCanvas}
+          migalhas={migalhas} onIrParaNivel={irParaNivel}
         />
 
         {modulosNo && (
           <PainelModulos no={modulosNo} layerName={layerName} layerColor={layerColor}
+            nivel={caminho.length + 1} onEntrar={moduloId => entrarNoModulo(modulosNo.id, moduloId)}
             dispatch={dispatch} onFechar={()=>setModulosNoId(null)} />
         )}
 

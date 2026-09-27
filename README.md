@@ -85,7 +85,7 @@ Monorepo com uma fronteira dura entre o núcleo e a interface:
 | Pacote | O que é | Testes |
 |---|---|---|
 | [`packages/core`](packages/core) | O motor, em TypeScript puro — **ARCK** valida as ligações, **ENGY** mede a tensão, **MENTOR** explica. Sem React, sem DOM, sem browser. | 44 (coração) + 11 (fronteira), `tsx` |
-| [`packages/ui-web`](packages/ui-web) | O editor visual — React + Vite. Canvas SVG, `useReducer` com transições nomeadas e testadas uma a uma. | 174, `vitest` + `jsdom` |
+| [`packages/ui-web`](packages/ui-web) | O editor visual — React + Vite. Canvas SVG, `useReducer` com transições nomeadas e testadas uma a uma. | 187, `vitest` + `jsdom` |
 
 A regra de ouro: **a lógica de domínio vive só no `core`**. A interface nunca decide o que é
 uma arquitectura válida — pergunta ao `core`.
