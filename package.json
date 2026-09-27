@@ -1,6 +1,6 @@
 {
   "name": "arck-engy-pro",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "private": true,
   "description": "ARCK & ENGY Pro — ferramenta visual de modelação de arquitectura de sistemas",
   "workspaces": [
