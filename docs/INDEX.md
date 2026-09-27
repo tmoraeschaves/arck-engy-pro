@@ -63,7 +63,7 @@ arquitectura (DEC-001, DEC-015). **"Finalizado" = lançamento público (DEC-016)
 ## Verificação rápida
 
 ```bash
-npm test                        # core (44) + fronteira (11) + ui-web (151) = 206, 0 falhas
+npm test                        # core (44) + fronteira (11) + ui-web (174) = 229, 0 falhas
 npm run lint -w packages/ui-web # ESLint, 0 problemas
 npm run build                   # vite — dist/index.html gerado
 ```

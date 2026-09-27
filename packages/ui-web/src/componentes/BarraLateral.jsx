@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  BellOff, Bell, BookmarkPlus, Box, Grid, Image, Layers, List, Menu,
+  BellOff, Bell, BookmarkPlus, Box, Grid, Group, Image, Layers, List, Menu,
   Rotate3d, Scissors, Type, ZoomIn, ZoomOut,
 } from "lucide-react";
 import { LAYER_KEYS } from "../config/camadas.js";
@@ -44,6 +44,7 @@ export function BarraLateral({
         {icon:<Scissors size={15}/>, color:"#EF4444", tip:"Cortar (C)",          ...ferramentas.corte},
         {icon:<Type size={15}/>,     color:"#F59E0B", tip:"Nota",                ...ferramentas.nota},
         {icon:<Box size={15}/>,      color:"#60A5FA", tip:"Formas Geométricas",  ...ferramentas.formas},
+        {icon:<Group size={15}/>,    color:"#16A34A", tip:"Contentor — desenha uma caixa para agrupar", ...ferramentas.contentor},
         {icon:<Image size={15}/>,    color:"#A78BFA", tip:"Fundo",               ...ferramentas.fundo},
       ].map(t=>(
         <button key={t.tip} onClick={t.fn} title={t.tip}

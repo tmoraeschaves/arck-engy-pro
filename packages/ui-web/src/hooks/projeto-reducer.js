@@ -15,6 +15,11 @@
  * módulos/funções que lhe cabem. Campo opcional; ausente = sem módulos.
  *   Modulo = { id, label, kind?, nota?, filho?: Diagrama | null }
  * `filho` (promoção a mini-diagrama) é matéria da Fatia 3 — aqui a lista é plana.
+ *
+ * CONTENTORES (DEC-018): `containers: Contentor[]` — caixas de agrupamento desenhadas à mão.
+ *   Contentor = { id, x, y, w, h, label, cor, estilo: "continuo"|"tracejado", locked? }
+ * Só visual (DEC-005): o reducer não sabe o que está dentro de cada um. Quem arrasta
+ * calcula o conteúdo pela geometria (lib/contentores.js) e manda-o em `levar`.
  */
 import { toNo, toLigacoes, validarNovaLigacao } from "../lib/core-bridge.js";
 
@@ -22,6 +27,7 @@ export const estadoInicial = {
   nodes: [],
   connections: [],
   shapes: [],
+  containers: [],
   annotations: [],
   customColors: {},
   bgImage: null,
@@ -37,6 +43,7 @@ export function snapshot(estado) {
     nodes: estado.nodes,
     connections: estado.connections,
     shapes: estado.shapes,
+    containers: estado.containers,
     annotations: estado.annotations,
     customColors: estado.customColors,
     bgImage: estado.bgImage,
@@ -72,6 +79,7 @@ export function projetoReducer(estado, accao) {
         nodes: p.nodes || [],
         connections: p.connections || [],
         shapes: p.shapes || [],
+        containers: p.containers || [],
         annotations: p.annotations || [],
         customColors: p.customColors || {},
         bgImage: p.bgImage || estado.bgImage,
@@ -86,7 +94,7 @@ export function projetoReducer(estado, accao) {
       // limpa o diagrama; o fundo só se limpa se não estiver trancado (RL de segurança:
       // um esboço-guia trancado sobrevive ao reset). Mantém sector, modo, cores, opacidade.
       return {
-        ...estado, nodes: [], connections: [], shapes: [], annotations: [],
+        ...estado, nodes: [], connections: [], shapes: [], containers: [], annotations: [],
         bgImage: estado.bgLocked ? estado.bgImage : null,
       };
 
@@ -223,6 +231,56 @@ export function projetoReducer(estado, accao) {
       return {
         ...estado,
         shapes: estado.shapes.map(s => s.id === accao.id ? { ...s, locked: !s.locked } : s),
+      };
+
+    // ── contentores (DEC-018) ───────────────────────────────────────────────
+    case "ADICIONAR_CONTENTOR":
+      return { ...estado, containers: [...estado.containers, accao.contentor] };
+
+    case "MOVER_CONTENTOR": {
+      // `levar` = o que estava geometricamente dentro quando o arrasto começou, já nas
+      // posições novas. O que estiver trancado fica onde está (trancado = não se move).
+      const { id, x, y, levar = {} } = accao;
+      if (estado.containers.find(c => c.id === id)?.locked) return estado;
+      const aplicar = (lista, novas = []) => {
+        if (!novas.length) return lista;
+        const pos = new Map(novas.map(p => [p.id, p]));
+        return lista.map(el => pos.has(el.id) && !el.locked ? { ...el, x: pos.get(el.id).x, y: pos.get(el.id).y } : el);
+      };
+      return {
+        ...estado,
+        containers: aplicar(estado.containers, [...(levar.containers || []), { id, x, y }]),
+        nodes: aplicar(estado.nodes, levar.nodes),
+        shapes: aplicar(estado.shapes, levar.shapes),
+        annotations: aplicar(estado.annotations, levar.annotations),
+      };
+    }
+
+    case "REDIMENSIONAR_CONTENTOR": {
+      if (estado.containers.find(c => c.id === accao.id)?.locked) return estado;
+      return {
+        ...estado,
+        containers: estado.containers.map(c => c.id === accao.id ? { ...c, x: accao.x, y: accao.y, w: accao.w, h: accao.h } : c),
+      };
+    }
+
+    case "EDITAR_CONTENTOR": {
+      // só a aparência — posição e tamanho têm acções próprias (e a guarda da trava)
+      const { label, cor, estilo } = accao.patch || {};
+      const campos = Object.fromEntries(Object.entries({ label, cor, estilo }).filter(([, v]) => v !== undefined));
+      return { ...estado, containers: estado.containers.map(c => c.id === accao.id ? { ...c, ...campos } : c) };
+    }
+
+    case "REMOVER_CONTENTOR": {
+      // apaga só a caixa — o que estava lá dentro fica no canvas (nada lhe pertencia)
+      if (estado.containers.find(c => c.id === accao.id)?.locked) return estado;
+      return { ...estado, containers: estado.containers.filter(c => c.id !== accao.id) };
+    }
+
+    case "ALTERNAR_TRAVA_CONTENTOR":
+      return {
+        ...estado,
+        containers: estado.containers.map(c => c.id === accao.id ? { ...c, locked: !c.locked } : c),
       };
 
     // ── anotações ───────────────────────────────────────────────────────────

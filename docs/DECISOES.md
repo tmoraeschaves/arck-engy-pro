@@ -393,3 +393,37 @@ O Modo Livre não muda — continua livre e avisa com 0%. A mensagem de ERRO do 
 dependia do modo, por isso serve igual. Testes: +2 no coração (directo e pelo contrato).
 
 **Princípio:** o medidor mede — nunca confia que outra camada (a UI) já impediu o erro.
+
+---
+
+## DEC-018 — Contentores desenhados à mão; sectores num dropdown
+**Data:** 2026-09-27 · **Decisão de:** Tiago Moraes Chaves
+
+Fecha as duas decisões pendentes do `layout-alvo.md` (itens 1 e 5).
+
+**1. Agrupamento = desenhar a caixa à mão.** Ferramenta "Contentor" na barra lateral: arrasta-se
+uma caixa translúcida (ou clica-se, e nasce com tamanho padrão), com rótulo, cor (6) e contorno
+contínuo ou tracejado. Alternativa rejeitada por agora: seleccionar nós → Agrupar (exige
+selecção múltipla, que não existe, e aninhar fica difícil).
+
+Caso de teste que decidiu: o Tiago está a fazer a formação AWS (Cloud Practitioner) e os
+diagramas de rede são todos contentores dentro de contentores — **Região ⊃ VPC ⊃ Zona de
+Disponibilidade ⊃ Sub-rede ⊃ Grupo de segurança ⊃ EC2**. A cor e o contorno distinguem o
+tipo de fronteira (VPC contínua a verde, AZ tracejada a azul, grupo de segurança a vermelho),
+e há fronteiras que só se *cruzam* (a AZ atravessa a VPC sem ser filha dela). O ARCK tem de
+conseguir desenhar a VPC-padrão da AWS — verificado em browser real.
+
+Regras (fiéis à DEC-005, só visual):
+- **Nada pertence a um contentor no modelo.** `containers[]` no documento não referencia nós.
+- **Arrastar leva o que está dentro _agora_**, calculado pela geometria no início do arrasto
+  (`lib/contentores.js`): nós e notas pelo ponto, formas e outros contentores só se couberem
+  inteiros. Tirar um nó do grupo é arrastá-lo para fora. Trancados ficam onde estão.
+- **Só a aba do rótulo e a borda agarram o rato** — o interior deixa passar os cliques
+  (colocar nós e notas dentro da VPC, pan, desseleccionar).
+- Apagar a caixa não apaga o conteúdo. Trava igual à das formas.
+- Desenho por área decrescente: o filho fica sempre por cima da mãe.
+
+**2. Faixa dos 12 sectores → sector activo + dropdown.** Não cabia em ecrãs de 1422 e 1600 px
+(a "Mecatrónica" saía cortada). O cabeçalho mostra só o sector actual; um clique abre os 12 em
+grelha. Cabe em qualquer ecrã e deixa crescer a lista.
+
