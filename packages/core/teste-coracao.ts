@@ -71,6 +71,7 @@ ok(medirTensao([],            Modo.GUIADO)  === TENSAO_INERCIA,        "Diagrama
 ok(medirTensao(cicloCompleto, Modo.GUIADO)  === TENSAO_GUIADO,         "Modo Guiado com ligações → 99.8%");
 ok(medirTensao(cicloCompleto, Modo.LIVRE)   === TENSAO_LIVRE_CORRETO,  "Modo Livre + correto → 100%");
 ok(medirTensao(comErro,       Modo.LIVRE)   === TENSAO_ERRO,           "Modo Livre + erro → 0%");
+ok(medirTensao(comErro,       Modo.GUIADO)  === TENSAO_ERRO,           "Modo Guiado + erro (vindo do Livre/import) → 0% — o medidor mede, não confia na UI (DEC-017)");
 
 ok(interpretarTensao(TENSAO_INERCIA)        === "INERCIA",       "interpretarTensao: -1 → INERCIA");
 ok(interpretarTensao(TENSAO_GUIADO)         === "GUIADO",        "interpretarTensao: 99.8 → GUIADO");
@@ -111,6 +112,7 @@ ok(engy.medirTensao([],            Modo.LIVRE)  === TENSAO_INERCIA,       "Contr
 ok(engy.medirTensao(cicloCompleto, Modo.GUIADO) === TENSAO_GUIADO,        "Contrato ENGY: 99.8% no guiado");
 ok(engy.medirTensao(cicloCompleto, Modo.LIVRE)  === TENSAO_LIVRE_CORRETO, "Contrato ENGY: 100% no livre correcto");
 ok(engy.medirTensao(comErro,       Modo.LIVRE)  === TENSAO_ERRO,          "Contrato ENGY: 0% com erro");
+ok(engy.medirTensao(comErro,       Modo.GUIADO) === TENSAO_ERRO,          "Contrato ENGY: 0% com erro também no guiado (DEC-017)");
 
 // ── RESULTADO ─────────────────────────────────────────────────────────────────
 console.log("\n=== RESULTADO ===");

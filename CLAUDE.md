@@ -20,8 +20,8 @@
   composição; **ESLint a 0 problemas** e agora corrido no CI. README com captura actual,
   LICENSE MIT (código) + CC BY 4.0 (`docs/fundacao/`). **Repositório público desde 2026-09-26
   (v2.1.0)** — branch protection activa em `main` (3 checks obrigatórios; fecha a DEC-010).
-- **Testes:** core em `tsx` (42 coração + 11 fronteira), `ui-web` em **vitest + jsdom +
-  @testing-library/react** (144) — total **197**, 0 falhas.
+- **Testes:** core em `tsx` (44 coração + 11 fronteira), `ui-web` em **vitest + jsdom +
+  @testing-library/react** (151) — total **206**, 0 falhas.
 - **Parqueado (pós-lançamento):** Movimento 8 fatias 3–5, layout novo (DEC-005,
   `docs/referencias/layout-alvo.md`), mobile/touch, notas redimensionáveis, auditoria do
   modelo de camadas (dois "L1–L5": o do diagrama vs. o da arquitectura limpa do código).
@@ -35,7 +35,7 @@ validação nos componentes. Para validar uma ligação, usa a ponte `packages/u
 ## Verificação rápida
 
 ```bash
-npm test                        # core (42) + fronteira (11) + ui-web (144) = 197, 0 falhas
+npm test                        # core (44) + fronteira (11) + ui-web (151) = 206, 0 falhas
 npm run lint -w packages/ui-web # ESLint, 0 problemas (também corre no CI)
 npm run build                   # Vite produção, dist/index.html gerado
 ```
@@ -49,9 +49,9 @@ Ligações válidas: `L1→L2`, `L2→L3`, `L3→L4`, `L4→L5`, `L5→L2`. Tudo
 | Estado | Valor | Quando |
 |---|---|---|
 | INÉRCIA | -1 | Diagrama vazio — sistema em repouso |
-| GUIADO | 99.8% | Modo guiado com ligações |
+| GUIADO | 99.8% | Modo guiado, todas as ligações válidas |
 | LIVRE_CORRETO | 100% | Modo livre, tudo correcto |
-| ERRO | 0% | Modo livre, qualquer erro |
+| ERRO | 0% | Qualquer modo, qualquer ligação inválida (DEC-017) |
 
 **INÉRCIA ≠ ERRO**: mesmo display zero, semântica oposta. `interpretarTensao(valor)` distingue-os.
 

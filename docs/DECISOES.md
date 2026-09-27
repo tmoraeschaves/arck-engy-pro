@@ -363,3 +363,33 @@ regressão primeiro. **Causa raiz:** o CI não corria lint. Passou a correr (job
 
 **Lição (para a fundação):** um erro "tolerado como baseline" tem de ser lido, não
 contado. Um erro de parsing não é um aviso — é um ficheiro inteiro fora da rede.
+
+---
+
+## DEC-017 — O ENGY mede sempre, também no Modo Guiado
+**Data:** 2026-09-27 · **Decisão de:** Tiago Moraes Chaves
+
+Encontrado pelo Tiago a testar a v2.1.0: desenhou em Modo Livre uma ligação proibida
+(ARMAZENAMENTO L4 → SERVIÇO L3), o Livre deu 0% (correcto), passou a Guiado e o medidor
+mostrou **99.8%** — com o rodapé a dizer "ALERTA, 1 conflito" ao mesmo tempo.
+
+Causa: `medirTensao` devolvia 99.8% em Guiado **sem olhar para as ligações**, assumindo que a
+UI tinha impedido o erro. Essa premissa cai em três portas de entrada: mudar de Livre para
+Guiado, importar um JSON, carregar um modelo.
+
+> *"O Guiado devia ter baixado, pois se fizer no Livre e passar a Guiado ele tem que
+> continuar a perceber o erro."*
+
+**Regra nova dos estados:**
+
+| Estado | Valor | Quando |
+|---|---|---|
+| INÉRCIA | -1 | Sem ligações (qualquer modo) |
+| GUIADO | 99.8% | Modo Guiado, todas as ligações válidas |
+| LIVRE_CORRETO | 100% | Modo Livre, todas as ligações válidas |
+| ERRO | 0% | **Qualquer modo**, qualquer ligação inválida |
+
+O Modo Livre não muda — continua livre e avisa com 0%. A mensagem de ERRO do Mentor já não
+dependia do modo, por isso serve igual. Testes: +2 no coração (directo e pelo contrato).
+
+**Princípio:** o medidor mede — nunca confia que outra camada (a UI) já impediu o erro.

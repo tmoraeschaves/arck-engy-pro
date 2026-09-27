@@ -63,7 +63,7 @@ arquitectura (DEC-001, DEC-015). **"Finalizado" = lançamento público (DEC-016)
 ## Verificação rápida
 
 ```bash
-npm test                        # core (42) + fronteira (11) + ui-web (144) = 197, 0 falhas
+npm test                        # core (44) + fronteira (11) + ui-web (151) = 206, 0 falhas
 npm run lint -w packages/ui-web # ESLint, 0 problemas
 npm run build                   # vite — dist/index.html gerado
 ```
@@ -94,9 +94,9 @@ package.json (root)       ← scripts: dev, build, test, test:core, test:boundar
 | Estado | Valor | Quando |
 |---|---|---|
 | INÉRCIA | -1 | Diagrama vazio — sistema em repouso, ainda não iniciado |
-| GUIADO | 99.8 | Modo guiado com ligações |
+| GUIADO | 99.8 | Modo guiado, todas as ligações válidas |
 | LIVRE_CORRETO | 100 | Modo livre, todas as ligações correctas |
-| ERRO | 0 | Modo livre, qualquer erro (não existe meio-certo) |
+| ERRO | 0 | Qualquer modo, qualquer ligação inválida — não existe meio-certo (DEC-017) |
 
 `interpretarTensao(valor)` devolve o nome do estado. INÉRCIA e ERRO têm valor base 0 mas semântica oposta.
 
