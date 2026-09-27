@@ -1,6 +1,6 @@
 # Movimento 8 — O que cabe dentro de cada camada
 
-> Estado: **em curso** (iniciado 2026-09-05)
+> Estado: **concluído** (2026-09-05 → 2026-09-27)
 > Decisão que o abre: **DEC-013**. Regra de ouro mantida: a validação de domínio vive
 > em `packages/core/src/`; o reducer é a máquina de estados do documento.
 
@@ -83,11 +83,11 @@ Ambas disponíveis, o utilizador escolhe (como "ver como lista / ver como ícone
 | **1** | Modelo de dados + acções do reducer (`ADICIONAR_MODULO`, `EDITAR_MODULO`, `REMOVER_MODULO`, `MOVER_MODULO`) + testes. Sem UI. | Baixo (aditivo, reversível) | ✅ **feita** |
 | **2a** | Painel lateral de módulos: duplo-clique num nó abre a lista; adicionar / editar `label` e `nota` / escolher `kind` / reordenar / remover. Contador de módulos no nó. Vocabulário de `kind` (`config/modulos.js`). Serve o **Modo Livre** por inteiro. | Médio | ✅ **feita** |
 | ~~2b~~ | ~~Template de arranque do Modo Guiado.~~ **Cancelada (DEC-014, 2026-09-06):** o M0–M5 é processo, não camada — não há template. Guiado e Livre partilham o painel da 2a. | — | ❌ **cancelada** |
-| 3 | `PROMOVER_MODULO` / `DESPROMOVER_MODULO` (com guarda dos 3 níveis) + testes. Botão "abrir como diagrama" no painel. | Médio | pendente |
-| 4 | Duplo-clique entra no sub-diagrama; barra de migalhas; Canvas recursivo (ou instância aninhada com profundidade limitada). Persistência (JSON) do `filho`. | Alto | pendente |
-| 5 | Export (SVG/PNG/print) ciente da profundidade; modelos guardam sub-diagramas. | Médio | pendente |
+| 3 | `PROMOVER_MODULO` / `DESPROMOVER_MODULO` (com guarda dos 3 níveis) + testes. Botão "abrir como diagrama" no painel. | Médio | ✅ **feita** |
+| 4 | Entrar no sub-diagrama; barra de migalhas; o mesmo Canvas mostra o nível actual. Persistência (JSON) do `filho`. | Alto | ✅ **feita** |
+| 5 | Export (SVG/PNG/print) ciente da profundidade; modelos guardam sub-diagramas. | Médio | ✅ **feita** |
 
-**As fatias 2–5 só avançam depois de o Arquitecto validar este plano.**
+**Plano validado pelo Arquitecto a 2026-09-27** ("vamos continuar as fatias") — fatias 3, 4 e 5 feitas nesse dia. **Movimento 8 concluído.**
 
 ## Fatia 1 — o que entrou (2026-09-05)
 
@@ -123,3 +123,57 @@ abre, adicionar mostra contador, fechar esconde). 111 testes ui-web.
 
 **Não verificado no browser** (sessão autónoma, sem browser) — falta o smoke test manual do
 Arquitecto: duplo-clique num nó, criar/editar/reordenar/remover módulos, confirmar o contador.
+
+## Fatia 3 — o que entrou (2026-09-27)
+
+`hooks/projeto-reducer.js`:
+- **`caminho`** — qualquer acção de diagrama aceita `caminho: [{ noId, moduloId }, …]`. O reducer
+  desce até ao `filho` desse módulo, aplica lá **a mesma lógica** (travas, validação do Guiado,
+  contentores — nada duplicado) e volta a escrever. Sem caminho actua na raiz. Um no-op lá em
+  baixo devolve o mesmo estado cá em cima. Acções do documento (sector, modo, cores, fundo,
+  carregar, reset) ignoram o caminho.
+- `PROMOVER_MODULO { noId, moduloId }` — dá ao módulo um `filho` vazio
+  (`{ nodes, connections, shapes, containers, annotations }`). Já promovido → no-op (nunca
+  apaga o que lá está). **Guarda dos 3 níveis:** raiz (1) → 2 → 3; promover dentro do nível 3
+  é recusado — lá os módulos existem, mas só como lista.
+- `DESPROMOVER_MODULO` — volta a item de lista; o sub-diagrama perde-se (a UI confirma antes).
+- `diagramaEm(estado, caminho)` — o diagrama nesse caminho, ou `null` se já não existe.
+- O `filho` viaja no snapshot: autosave, JSON e modelos guardam os sub-diagramas sem código novo
+  (o que a Fatia 4 previa como "persistência" veio de graça).
+
+## Fatia 4 — o que entrou (2026-09-27)
+
+- **Entra-se pelo módulo, não pelo nó.** Um nó tem vários módulos, cada um com o seu diagrama —
+  por isso o duplo-clique no nó continua a abrir o painel (vista 1), e cada módulo do painel tem
+  **"Abrir como diagrama"** (promove e entra) ou **"Entrar no diagrama · N nós"** (vista 2).
+  No nível 3 aparece "os módulos daqui ficam como lista". Desfazer o diagrama e apagar um módulo
+  com diagrama pedem confirmação.
+- **`App.jsx`** — estado `caminho`; o `dispatch` que o resto da app usa junta-lhe o caminho
+  actual, por isso canvas, arrastos, atalhos, biblioteca e contentores actuam no nível em que se
+  está sem mudar cada chamada. Os callbacks do documento usam `despacharRaiz`. Se o caminho
+  deixar de existir (nó apagado, reset, import), recua sozinho até ao último nível válido.
+  Entrar/sair limpa a selecção e repõe a vista 1:1.
+- **`Migalhas.jsx`** — `↑ · Sistema › SERVIÇO · Autenticação › GATEWAY · JWT`; cada passo volta
+  a esse nível. Canvas vazio num sub-diagrama diz "Diagrama de «…»".
+- Integridade, relatório de fluxo, barra de estado e exportação mostram **o nível actual**.
+
+**Bug apanhado pelo lint antes de chegar ao browser:** vários `useCallback` omitiam o `dispatch`
+das dependências (era estável; passou a mudar com o nível). Dentro de um sub-diagrama, apagar
+um nó despachava para a raiz — no-op silencioso. Teste de regressão: apagar e ligar dentro do
+sub-diagrama (verificado que falha com o bug reintroduzido).
+
+Verificado em Chrome real: raiz → Autenticação (nível 2) → JWT (nível 3) → Sistema, por cliques
+reais; 0 erros na consola.
+
+## Fatia 5 — o que entrou (2026-09-27)
+
+- **Exportar SVG/PNG de um sub-diagrama leva o título do caminho** (`Sistema › SERVIÇO ·
+  Autenticação`), numa faixa própria acima do desenho — sem ele, uma exportação de nível 2/3
+  parecia um diagrama solto. Na raiz não há título (exportação igual à de antes).
+  Verificado em Chrome real (download interceptado: título, 3 nós e o contentor no ficheiro).
+- **Modelos, JSON e autosave já guardavam os sub-diagramas** desde a Fatia 3 (o `filho` viaja
+  no snapshot) — testado no reducer.
+- **Imprimir/PDF** imprime o ecrã, e as migalhas já mostram o nível — nada a mudar.
+
+Total: 244 testes (44 + 11 + 189).
+

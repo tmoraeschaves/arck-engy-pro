@@ -1,13 +1,18 @@
-import { X, ChevronUp, ChevronDown, Trash2, Plus } from "lucide-react";
+import { X, ChevronUp, ChevronDown, Trash2, Plus, LogIn, Undo2 } from "lucide-react";
 import { uid } from "../lib/uid.js";
 import { MODULO_KINDS, MODULO_KIND_PADRAO, kindInfo } from "../config/modulos.js";
+import { PROFUNDIDADE_MAXIMA } from "../hooks/projeto-reducer.js";
+
+const tamanho = filho => filho ? filho.nodes.length : 0;
 
 /**
  * Painel lateral dos módulos de um nó (Movimento 8, Fatia 2a).
  * Props-in, sem estado próprio — despacha para o reducer do projecto.
  * Abre por duplo-clique no nó; serve o Modo Livre por inteiro.
+ * Fatia 4: cada módulo pode abrir como diagrama próprio (`onEntrar`) — `nivel` é o nível do
+ * diagrama onde o nó vive (1 = raiz); no último nível os módulos ficam só como lista.
  */
-export function PainelModulos({ no, layerName, layerColor, dispatch, onFechar }) {
+export function PainelModulos({ no, layerName, layerColor, dispatch, onFechar, nivel = 1, onEntrar }) {
   if (!no) return null;
   const modulos = no.modules || [];
   const cor = layerColor(no.layer);
@@ -16,7 +21,16 @@ export function PainelModulos({ no, layerName, layerColor, dispatch, onFechar })
     dispatch({ tipo: "ADICIONAR_MODULO", noId: no.id, modulo: { id: `mod_${uid()}`, label: "Novo módulo", kind: MODULO_KIND_PADRAO } });
 
   const editar = (moduloId, patch) => dispatch({ tipo: "EDITAR_MODULO", noId: no.id, moduloId, patch });
-  const remover = (moduloId) => dispatch({ tipo: "REMOVER_MODULO", noId: no.id, moduloId });
+  // apagar um módulo com diagrama dentro apaga o diagrama — pergunta antes
+  const remover = (m) => {
+    if (tamanho(m.filho) && !window.confirm(`Apagar «${m.label}» e o diagrama que tem dentro (${tamanho(m.filho)} nós)?`)) return;
+    dispatch({ tipo: "REMOVER_MODULO", noId: no.id, moduloId: m.id });
+  };
+  const despromover = (m) => {
+    if (tamanho(m.filho) && !window.confirm(`Desfazer o diagrama de «${m.label}» (${tamanho(m.filho)} nós)? O módulo fica na lista.`)) return;
+    dispatch({ tipo: "DESPROMOVER_MODULO", noId: no.id, moduloId: m.id });
+  };
+  const podePromover = nivel < PROFUNDIDADE_MAXIMA;
   const mover = (moduloId, direccao) => dispatch({ tipo: "MOVER_MODULO", noId: no.id, moduloId, direccao });
 
   return (
@@ -61,7 +75,7 @@ export function PainelModulos({ no, layerName, layerColor, dispatch, onFechar })
                   className="text-slate-300 hover:text-slate-600 disabled:opacity-30 disabled:hover:text-slate-300"><ChevronUp size={12} /></button>
                 <button onClick={() => mover(m.id, 1)} disabled={i === modulos.length - 1}
                   className="text-slate-300 hover:text-slate-600 disabled:opacity-30 disabled:hover:text-slate-300"><ChevronDown size={12} /></button>
-                <button onClick={() => remover(m.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={11} /></button>
+                <button onClick={() => remover(m)} title="Remover módulo" className="text-slate-300 hover:text-red-500"><Trash2 size={11} /></button>
               </div>
               <input
                 aria-label="Nome do módulo"
@@ -75,6 +89,27 @@ export function PainelModulos({ no, layerName, layerColor, dispatch, onFechar })
                 onChange={e => editar(m.id, { nota: e.target.value })}
                 placeholder="nota (opcional)"
                 className="w-full text-[9px] text-slate-500 bg-transparent outline-none" />
+              {m.filho ? (
+                <div className="flex items-center gap-1 mt-1.5">
+                  <button data-testid="entrar-modulo" onClick={() => onEntrar?.(m.id)}
+                    className="flex-1 py-1 flex items-center justify-center gap-1 text-[9px] font-bold rounded text-white transition-all hover:opacity-90"
+                    style={{ background: cor }}>
+                    <LogIn size={11} /> Entrar no diagrama · {tamanho(m.filho)} {tamanho(m.filho) === 1 ? "nó" : "nós"}
+                  </button>
+                  <button onClick={() => despromover(m)} title="Desfazer o diagrama (o módulo fica na lista)"
+                    className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-red-500 hover:bg-red-50"><Undo2 size={11} /></button>
+                </div>
+              ) : podePromover ? (
+                <button data-testid="entrar-modulo" onClick={() => onEntrar?.(m.id)}
+                  className="w-full mt-1.5 py-1 flex items-center justify-center gap-1 text-[9px] font-bold rounded border border-dashed transition-all hover:bg-white"
+                  style={{ borderColor: cor + "80", color: cor }}>
+                  <LogIn size={11} /> Abrir como diagrama
+                </button>
+              ) : (
+                <div className="mt-1.5 text-[8px] text-slate-400 text-center" title="Limite de 3 níveis (DEC-013): nada de camada dentro de camada sem fim">
+                  nível {PROFUNDIDADE_MAXIMA} — os módulos daqui ficam como lista
+                </div>
+              )}
             </div>
           );
         })}

@@ -348,3 +348,96 @@ describe("Canvas — contentores de agrupamento (DEC-018)", () => {
     expect(screen.queryByLabelText("Rótulo do contentor")).toBeNull(); // trancada: sem barra de edição
   });
 });
+
+describe("Canvas — sub-diagramas (Movimento 8, Fatia 4)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const nos = c => c.querySelectorAll('[data-testid="no"]');
+  async function criarModuloNoPrimeiroNo(user, container, nome) {
+    fireEvent.doubleClick(nos(container)[0]);
+    await user.click(screen.getByText("Adicionar módulo"));
+    const campo = screen.getAllByLabelText("Nome do módulo").at(-1);
+    await user.clear(campo);
+    await user.type(campo, nome);
+  }
+
+  it("entrar no módulo mostra um diagrama vazio; o que se adiciona lá não aparece na raiz; as migalhas voltam", async () => {
+    const { user, container } = await arrancar();
+    await user.click(screen.getByTitle("Adicionar LÓGICA"));
+    await criarModuloNoPrimeiroNo(user, container, "Autenticação");
+
+    await user.click(screen.getByText("Abrir como diagrama"));
+    const migalhas = screen.getByTestId("migalhas");
+    expect(within(migalhas).getByText(/Autenticação/)).toBeTruthy();
+    expect(nos(container)).toHaveLength(0);
+    expect(screen.getByText("Diagrama de «Autenticação»")).toBeTruthy();
+
+    // o que se faz aqui dentro fica aqui dentro (antes do fix, o nó ia parar à raiz)
+    await user.click(screen.getByTitle("Adicionar SENSÓRIA"));
+    await user.click(screen.getByTitle("Adicionar LÓGICA"));
+    expect(nos(container)).toHaveLength(2);
+
+    // voltar pela migalha "Sistema"
+    await user.click(within(migalhas).getByText("Sistema"));
+    expect(screen.queryByTestId("migalhas")).toBeNull();
+    expect(nos(container)).toHaveLength(1);
+
+    // o painel mostra que o módulo já tem diagrama, com a contagem
+    fireEvent.doubleClick(nos(container)[0]);
+    expect(screen.getByText(/Entrar no diagrama · 2 nós/)).toBeTruthy();
+  });
+
+  it("dentro do sub-diagrama, apagar (botão direito) e ligar actuam lá — não na raiz", async () => {
+    const { user, container } = await arrancar();
+    await user.click(screen.getByTitle("Adicionar LÓGICA"));
+    await criarModuloNoPrimeiroNo(user, container, "Autenticação");
+    await user.click(screen.getByText("Abrir como diagrama"));
+    await user.click(screen.getByTitle("Adicionar SENSÓRIA"));
+    await user.click(screen.getByTitle("Adicionar LÓGICA"));
+
+    // ligar L1 → L2 aqui dentro
+    await user.click(nos(container)[0]);
+    await user.click(nos(container)[1]);
+    expect(container.querySelectorAll('[data-testid="ligacao"], line[stroke="#10B981"]').length).toBeGreaterThan(0);
+
+    // apagar com o botão direito
+    fireEvent.contextMenu(nos(container)[1]);
+    expect(nos(container)).toHaveLength(1);
+
+    await user.click(within(screen.getByTestId("migalhas")).getByText("Sistema"));
+    expect(nos(container)).toHaveLength(1); // a raiz continua só com o nó original
+  });
+
+  it("no nível 3 os módulos ficam como lista (sem 'Abrir como diagrama')", async () => {
+    const { user, container } = await arrancar();
+    await user.click(screen.getByTitle("Adicionar LÓGICA"));
+    await criarModuloNoPrimeiroNo(user, container, "A");
+    await user.click(screen.getByText("Abrir como diagrama"));           // nível 2
+    await user.click(screen.getByTitle("Adicionar LÓGICA"));
+    await criarModuloNoPrimeiroNo(user, container, "B");
+    await user.click(screen.getByText("Abrir como diagrama"));           // nível 3
+    expect(within(screen.getByTestId("migalhas")).getByText(/· B/)).toBeTruthy();
+
+    await user.click(screen.getByTitle("Adicionar LÓGICA"));
+    await criarModuloNoPrimeiroNo(user, container, "C");
+    expect(screen.queryByText("Abrir como diagrama")).toBeNull();
+    expect(screen.getByText(/os módulos daqui ficam como lista/)).toBeTruthy();
+
+    // subir um nível pelo ↑
+    await user.click(screen.getByTitle("Subir um nível"));
+    expect(within(screen.getByTestId("migalhas")).getByText(/· A/)).toBeTruthy();
+  });
+
+  it("apagar na raiz o nó que tinha o sub-diagrama aberto devolve a vista à raiz (nunca aponta para o vazio)", async () => {
+    const { user, container } = await arrancar();
+    await user.click(screen.getByTitle("Adicionar LÓGICA"));
+    await criarModuloNoPrimeiroNo(user, container, "X");
+    await user.click(screen.getByText("Abrir como diagrama"));
+    await user.click(screen.getByTitle("Adicionar SENSÓRIA"));
+    // reset apaga a raiz inteira → o caminho deixa de existir
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await user.click(screen.getByTitle("Reset"));
+    expect(screen.queryByTestId("migalhas")).toBeNull();
+    expect(nos(container)).toHaveLength(0);
+  });
+});

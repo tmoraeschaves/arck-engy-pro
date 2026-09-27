@@ -9,6 +9,7 @@ import { Ligacao, MarcadoresLigacao } from "./Ligacao.jsx";
 import { Anotacao } from "./Anotacao.jsx";
 import { Forma } from "./Forma.jsx";
 import { Contentor } from "./Contentor.jsx";
+import { Migalhas } from "./Migalhas.jsx";
 import { porAreaDecrescente } from "../lib/contentores.js";
 
 /**
@@ -36,6 +37,8 @@ export function Canvas({
   dispatch, addAnnotation, placeShape, scaleLayout, connectNodes, removeNode, abrirModulos,
   // apresentação
   layerName, layerColor, paraCanvas,
+  // sub-diagramas (Movimento 8): onde estamos e como voltar
+  migalhas = [], onIrParaNivel,
 }) {
   return (
     <main ref={canvasRef}
@@ -243,6 +246,8 @@ export function Canvas({
 
       </div>{/* end 3D world */}
 
+      <Migalhas migalhas={migalhas} onIrPara={onIrParaNivel} />
+
       {/* 3D mode overlay */}
       {is3D && (
         <div className="absolute inset-0 pointer-events-none z-20">
@@ -271,8 +276,13 @@ export function Canvas({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <div className="text-5xl mb-4 opacity-10">⬡</div>
-            <div className="text-sm font-bold text-slate-400">Architect & Engineer</div>
-            <div className="text-[11px] text-slate-400 mt-1">Sidebar esquerda: adiciona nós L1–L5 ou formas geométricas</div>
+            <div className="text-sm font-bold text-slate-400">
+              {migalhas.length ? `Diagrama de «${migalhas.at(-1).rotulo}»` : "Architect & Engineer"}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">
+              {migalhas.length ? "Ainda vazio — o que é que este módulo tem dentro? Adiciona nós L1–L5."
+                : "Sidebar esquerda: adiciona nós L1–L5 ou formas geométricas"}
+            </div>
             <div className="text-[9px] text-slate-600 mt-2">Ctrl+A seleciona tudo · ? abre tutorial</div>
           </div>
         </div>
