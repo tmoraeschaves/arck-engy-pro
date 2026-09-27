@@ -307,8 +307,9 @@ export default function App() {
 
   // ── exportação ────────────────────────────────────────────────────────────
   const buildSVG = useCallback(
-    () => construirSVG({ nodes, connections, shapes, containers, corDaCamada: layerColor, modoLivre: freeMode }),
-    [nodes, connections, shapes, containers, layerColor, freeMode],
+    () => construirSVG({ nodes, connections, shapes, containers, corDaCamada: layerColor, modoLivre: freeMode,
+      titulo: migalhas.length ? ["Sistema", ...migalhas.map(m => `${m.camada} · ${m.rotulo}`)].join(" › ") : undefined }),
+    [nodes, connections, shapes, containers, layerColor, freeMode, migalhas],
   );
   const exportSVG = useCallback(() => exportarSVG(buildSVG()), [buildSVG]);
   const exportPNG = useCallback(() => exportarPNG(buildSVG()), [buildSVG]);

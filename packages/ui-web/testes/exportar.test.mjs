@@ -68,3 +68,22 @@ describe("construirSVG — contentores (DEC-018)", () => {
     expect(dimensoesSVG('<?xml version="1.0"?><svg xmlns="x" width="812" height="455"><rect width="1" height="2"/></svg>')).toEqual({ w: 812, h: 455 });
   });
 });
+
+describe("construirSVG — sub-diagramas (Movimento 8, Fatia 5)", () => {
+  const a = { id: "a", layer: "L1", x: 100, y: 100 };
+  const base = { nodes: [a], connections: [], shapes: [], corDaCamada: cor, modoLivre: false };
+
+  it("na raiz não há título; num sub-diagrama o título diz de onde vem (escapado)", () => {
+    expect(construirSVG(base)).not.toContain("Sistema ›");
+    const svg = construirSVG({ ...base, titulo: "Sistema › SERVIÇO · Auth <v2>" });
+    expect(svg).toContain("Sistema › SERVIÇO · Auth &lt;v2&gt;");
+  });
+
+  it("o título tem faixa própria — a imagem cresce e o desenho não fica por baixo do texto", () => {
+    const sem = dimensoesSVG(construirSVG(base)), com = dimensoesSVG(construirSVG({ ...base, titulo: "Sistema › X" }));
+    expect(com.h).toBeGreaterThanOrEqual(sem.h);
+    const yNo = svg => Number(/translate\([\d.-]+,([\d.-]+)\)/.exec(svg)[1]);
+    // o desenho desce exactamente a altura da faixa do título
+    expect(yNo(construirSVG({ ...base, titulo: "Sistema › X" }))).toBe(yNo(construirSVG(base)) + 28);
+  });
+});

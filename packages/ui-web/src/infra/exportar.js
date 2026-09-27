@@ -14,15 +14,21 @@ const escapar = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").repl
  * Constrói o SVG do diagrama como string. Devolve null se não há nada para exportar.
  * @param corDaCamada (key) => string  — resolve a cor de cada camada
  * @param modoLivre boolean            — em modo livre todas as ligações contam como válidas
+ * @param titulo string?               — num sub-diagrama, de onde vem ("Sistema › SERVIÇO · Autenticação");
+ *                                       sem ele uma exportação de nível 2/3 parecia um diagrama solto
  */
-export function construirSVG({ nodes, connections, shapes, containers = [], corDaCamada, modoLivre }) {
+export function construirSVG({ nodes, connections, shapes, containers = [], corDaCamada, modoLivre, titulo }) {
   if (!nodes.length && !shapes.length && !containers.length) return null;
   // os contentores contam com os dois cantos — a caixa inteira tem de caber na imagem
   const allX = [...nodes.map(n => n.x), ...shapes.map(s => s.x), ...containers.flatMap(c => [c.x, c.x + c.w]), 0];
   const allY = [...nodes.map(n => n.y), ...shapes.map(s => s.y), ...containers.flatMap(c => [c.y, c.y + c.h]), 0];
-  const mx = Math.min(...allX) - 70, my = Math.min(...allY) - 70;
+  const topo = titulo ? 28 : 0; // faixa para o título, acima do desenho
+  const mx = Math.min(...allX) - 70, my = Math.min(...allY) - 70 - topo;
   const w = Math.max(400, Math.max(...allX) - mx + 70);
   const h = Math.max(300, Math.max(...allY) - my + 70);
+  const cabecalho = titulo
+    ? `<text x="12" y="20" font-size="12" font-weight="bold" fill="#334155" font-family="system-ui">${escapar(titulo)}</text>`
+    : "";
 
   const gs = porAreaDecrescente(containers).map(c => {
     const dash = ESTILOS_CONTENTOR[c.estilo]?.dash;
@@ -43,7 +49,7 @@ export function construirSVG({ nodes, connections, shapes, containers = [], corD
     return `<g transform="translate(${n.x - mx - 20},${n.y - my - 20})"><rect width="40" height="40" fill="${c}" rx="6" opacity=".9"/><text x="20" y="26" text-anchor="middle" font-size="8" fill="white" font-weight="bold" font-family="system-ui">${n.layer}</text></g>`;
   }).join("");
 
-  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs><rect width="${w}" height="${h}" fill="white"/>${gs}${cs}${ns}<text x="${w - 8}" y="${h - 5}" text-anchor="end" font-size="7" fill="#94a3b8" font-family="system-ui">Architect &amp; Engineer v${METRICS.version}</text></svg>`;
+  return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs><rect width="${w}" height="${h}" fill="white"/>${cabecalho}${gs}${cs}${ns}<text x="${w - 8}" y="${h - 5}" text-anchor="end" font-size="7" fill="#94a3b8" font-family="system-ui">Architect &amp; Engineer v${METRICS.version}</text></svg>`;
 }
 
 function descarregar(href, download) {

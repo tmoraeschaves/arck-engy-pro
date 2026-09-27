@@ -1,6 +1,6 @@
 # Movimento 8 — O que cabe dentro de cada camada
 
-> Estado: **em curso** (iniciado 2026-09-05)
+> Estado: **concluído** (2026-09-05 → 2026-09-27)
 > Decisão que o abre: **DEC-013**. Regra de ouro mantida: a validação de domínio vive
 > em `packages/core/src/`; o reducer é a máquina de estados do documento.
 
@@ -85,9 +85,9 @@ Ambas disponíveis, o utilizador escolhe (como "ver como lista / ver como ícone
 | ~~2b~~ | ~~Template de arranque do Modo Guiado.~~ **Cancelada (DEC-014, 2026-09-06):** o M0–M5 é processo, não camada — não há template. Guiado e Livre partilham o painel da 2a. | — | ❌ **cancelada** |
 | 3 | `PROMOVER_MODULO` / `DESPROMOVER_MODULO` (com guarda dos 3 níveis) + testes. Botão "abrir como diagrama" no painel. | Médio | ✅ **feita** |
 | 4 | Entrar no sub-diagrama; barra de migalhas; o mesmo Canvas mostra o nível actual. Persistência (JSON) do `filho`. | Alto | ✅ **feita** |
-| 5 | Export (SVG/PNG/print) ciente da profundidade; modelos guardam sub-diagramas. | Médio | pendente |
+| 5 | Export (SVG/PNG/print) ciente da profundidade; modelos guardam sub-diagramas. | Médio | ✅ **feita** |
 
-**Plano validado pelo Arquitecto a 2026-09-27** ("vamos continuar as fatias") — fatias 3 e 4 feitas nesse dia.
+**Plano validado pelo Arquitecto a 2026-09-27** ("vamos continuar as fatias") — fatias 3, 4 e 5 feitas nesse dia. **Movimento 8 concluído.**
 
 ## Fatia 1 — o que entrou (2026-09-05)
 
@@ -163,5 +163,17 @@ um nó despachava para a raiz — no-op silencioso. Teste de regressão: apagar 
 sub-diagrama (verificado que falha com o bug reintroduzido).
 
 Verificado em Chrome real: raiz → Autenticação (nível 2) → JWT (nível 3) → Sistema, por cliques
-reais; 0 erros na consola. 242 testes (44 + 11 + 187).
+reais; 0 erros na consola.
+
+## Fatia 5 — o que entrou (2026-09-27)
+
+- **Exportar SVG/PNG de um sub-diagrama leva o título do caminho** (`Sistema › SERVIÇO ·
+  Autenticação`), numa faixa própria acima do desenho — sem ele, uma exportação de nível 2/3
+  parecia um diagrama solto. Na raiz não há título (exportação igual à de antes).
+  Verificado em Chrome real (download interceptado: título, 3 nós e o contentor no ficheiro).
+- **Modelos, JSON e autosave já guardavam os sub-diagramas** desde a Fatia 3 (o `filho` viaja
+  no snapshot) — testado no reducer.
+- **Imprimir/PDF** imprime o ecrã, e as migalhas já mostram o nível — nada a mudar.
+
+Total: 244 testes (44 + 11 + 189).
 

@@ -22,7 +22,8 @@ arquitectura (DEC-001, DEC-015). **"Finalizado" = lançamento público (DEC-016)
 3. **Envelope** ✅ — README com captura, LICENSE MIT + CC BY 4.0 (`docs/fundacao/`), lint no CI
 4. **Abrir o repositório** ✅ — público desde 2026-09-26 (v2.1.0); branch protection activa em `main`
    (3 checks obrigatórios, sem force-push; administrador pode fazer push directo — `enforce_admins` desligado)
-5. *Pós-lançamento:* Movimento 8 fatias 3–5 · layout novo (`docs/referencias/layout-alvo.md`) ·
+5. **Pós-lançamento:** contentores + selector de sector ✅ (v2.2.0, DEC-018) · Movimento 8 ✅
+   (sub-diagramas, 2026-09-27) · resto do layout (`layout-alvo.md` itens 3/4/6) · 3D a sério ·
    mobile/touch · auditoria do modelo de camadas · nome (não bloqueia — DEC-015)
 
 ## Visão da integração — vista explodida (confirmada 2026-09-05, ver DEC-013 + `MOVIMENTO_8.md`)
@@ -36,9 +37,9 @@ arquitectura (DEC-001, DEC-015). **"Finalizado" = lançamento público (DEC-016)
   escreve os seus módulos. A distinção Guiado vs. Livre é só a validação de fluxo L1→L5.
   *(DEC-014, 2026-09-06: o template de arranque M0–M5 foi abandonado — M0–M5 é processo, não
   camada.)*
-- **Estado:** Fatia 1 (modelo + reducer) e Fatia 2a (painel lateral de módulos) **feitas e em
-  `main`** (v2.0.0). Fatia 2b **cancelada**. Fatia 3 (`PROMOVER_MODULO` / sub-diagramas) é
-  pós-lançamento (DEC-016) — ver `docs/MOVIMENTO_8.md`.
+- **Estado:** **Movimento 8 concluído** (2026-09-27). Fatias 1 e 2a na v2.0.0; 2b cancelada;
+  fatias 3–5 (promover módulo a sub-diagrama, entrar com migalhas, limite de 3 níveis,
+  exportação com título do nível) — ver `docs/MOVIMENTO_8.md`.
 
 ## Estado actual (2026-09-26)
 
@@ -56,6 +57,7 @@ arquitectura (DEC-001, DEC-015). **"Finalizado" = lançamento público (DEC-016)
 | 7 | Quebrar o monólito `App.jsx` | 1293 → 342 linhas; App = composição; 13 componentes + 6 hooks |
 
 - **v2.0.0** (2026-09-14, `a42d9d5`) — Movimento 7 fatias 1–6 + Movimento 8 fatias 1/2a + autosave + integridade.
+- **v2.2.0** (2026-09-27, `e01da3f`) — contentores de agrupamento desenhados à mão + selector de sector (DEC-018).
 - **Lançamento (2026-09-26, DEC-016)** — refactor final, ESLint 0 problemas e no CI, 3 bugs
   apanhados ao ligar o lint (texto `)}` no cabeçalho, `}` na Forma trancada, rotação 3D por
   arrasto partida), versão do cabeçalho lida do `package.json`, captura do README refeita.
@@ -63,7 +65,7 @@ arquitectura (DEC-001, DEC-015). **"Finalizado" = lançamento público (DEC-016)
 ## Verificação rápida
 
 ```bash
-npm test                        # core (44) + fronteira (11) + ui-web (187) = 242, 0 falhas
+npm test                        # core (44) + fronteira (11) + ui-web (189) = 244, 0 falhas
 npm run lint -w packages/ui-web # ESLint, 0 problemas
 npm run build                   # vite — dist/index.html gerado
 ```
