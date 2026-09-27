@@ -79,8 +79,8 @@ Falta (é o que a DEC-005 manda fazer — só visual):
    → agrupar, ou desenhar a caixa à mão).
 2. ✅ **Setas visíveis** (2026-09-27) — a linha ia de centro a centro e a seta ficava debaixo do
    nó de destino. Agora `lib/geometria.js` (`aparaNaBorda`) apara-a à borda dos nós, no canvas e
-   na exportação SVG/PNG; seta um pouco maior. Resta: quando a ligação chega por baixo, a ponta
-   encosta ao rótulo do nó.
+   na exportação SVG/PNG; seta um pouco maior. A borda de baixo conta com o rótulo (`ROTULO`),
+   para as linhas que entram ou saem por baixo não o riscarem.
 3. **Grelha de linhas ténues** em vez de pontos — opcional, gosto.
 4. **Tokens de cor/espaçamento** num só sítio — hoje há hex espalhados (`#0F172A`, `#1E293B`…).
 5. **Faixa dos 12 sectores** — não cabe na maioria dos ecrãs (1422 e 1600 px incluídos). A barra

@@ -3,7 +3,7 @@
  * não no centro; senão a seta fica desenhada DENTRO do quadrado de destino e é tapada.
  */
 import { describe, it, expect } from "vitest";
-import { aparaNaBorda, MEIO_NO } from "../src/lib/geometria.js";
+import { aparaNaBorda, MEIO_NO, ROTULO } from "../src/lib/geometria.js";
 
 describe("aparaNaBorda", () => {
   it("horizontal: pára a MEIO_NO + folga do centro de cada nó", () => {
@@ -18,9 +18,14 @@ describe("aparaNaBorda", () => {
     expect(l.y2).toBeCloseTo(100 - MEIO_NO);
   });
 
-  it("vertical para cima: acaba por baixo do nó de destino", () => {
+  it("vertical para cima: acaba por baixo do RÓTULO do nó de destino (não o risca)", () => {
     const l = aparaNaBorda({ x: 50, y: 300 }, { x: 50, y: 100 }, 0);
-    expect(l).toEqual({ x1: 50, y1: 300 - MEIO_NO, x2: 50, y2: 100 + MEIO_NO });
+    expect(l).toEqual({ x1: 50, y1: 300 - MEIO_NO, x2: 50, y2: 100 + MEIO_NO + ROTULO });
+  });
+
+  it("vertical para baixo: sai por baixo do rótulo da origem", () => {
+    const l = aparaNaBorda({ x: 50, y: 100 }, { x: 50, y: 300 }, 0);
+    expect(l).toEqual({ x1: 50, y1: 100 + MEIO_NO + ROTULO, x2: 50, y2: 300 - MEIO_NO });
   });
 
   it("nós sobrepostos (demasiado perto): devolve centro a centro, não inverte a linha", () => {
