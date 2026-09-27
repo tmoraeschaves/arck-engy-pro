@@ -14,7 +14,14 @@
  * MÓDULOS (Movimento 8, DEC-013): um nó pode ter `modules: Modulo[]` — a lista de
  * módulos/funções que lhe cabem. Campo opcional; ausente = sem módulos.
  *   Modulo = { id, label, kind?, nota?, filho?: Diagrama | null }
- * `filho` (promoção a mini-diagrama) é matéria da Fatia 3 — aqui a lista é plana.
+ * `filho` = o módulo foi PROMOVIDO a mini-diagrama próprio (Fatia 3): `Diagrama | null`.
+ *   Diagrama = { nodes, connections, shapes, containers, annotations } — herda sector,
+ *   modo, cores e fundo do documento; não os repete.
+ *
+ * SUB-DIAGRAMAS e `caminho` (Movimento 8, Fatia 3): qualquer acção de diagrama pode levar
+ * `caminho: [{ noId, moduloId }, …]` — o reducer desce até ao `filho` desse módulo, aplica lá
+ * a MESMA lógica (travas, validação de ligações, contentores — nada duplicado) e volta a
+ * escrever. Sem `caminho` (ou vazio) actua na raiz. Limite: 3 níveis (raiz = nível 1).
  *
  * CONTENTORES (DEC-018): `containers: Contentor[]` — caixas de agrupamento desenhadas à mão.
  *   Contentor = { id, x, y, w, h, label, cor, estilo: "continuo"|"tracejado", locked? }
@@ -54,6 +61,62 @@ export function snapshot(estado) {
   };
 }
 
+/** Profundidade máxima: raiz (1) → sub-diagrama (2) → sub-sub-diagrama (3). DEC-013. */
+export const PROFUNDIDADE_MAXIMA = 3;
+
+/** Campos que formam um diagrama — a raiz e cada `filho` têm exactamente estes. */
+const CAMPOS_DIAGRAMA = ["nodes", "connections", "shapes", "containers", "annotations"];
+export const diagramaVazio = () => ({ nodes: [], connections: [], shapes: [], containers: [], annotations: [] });
+const soDiagrama = e => Object.fromEntries(CAMPOS_DIAGRAMA.map(k => [k, e[k] || []]));
+
+/** Acções que editam UM diagrama (e por isso aceitam `caminho`). As restantes são do documento. */
+const ACCOES_DE_DIAGRAMA = new Set([
+  "ADICIONAR_NO", "REMOVER_NO", "MOVER_NO", "ALTERNAR_TRAVA_NO",
+  "ADICIONAR_MODULO", "EDITAR_MODULO", "REMOVER_MODULO", "MOVER_MODULO",
+  "PROMOVER_MODULO", "DESPROMOVER_MODULO",
+  "ESCALAR_LAYOUT", "INSERIR_TEMPLATE", "LIGAR", "DESLIGAR", "CORTAR_LIGACOES",
+  "ADICIONAR_FORMA", "MOVER_FORMA", "REDIMENSIONAR_FORMA", "REMOVER_FORMA", "ALTERNAR_TRAVA_FORMA",
+  "ADICIONAR_CONTENTOR", "MOVER_CONTENTOR", "REDIMENSIONAR_CONTENTOR", "EDITAR_CONTENTOR",
+  "REMOVER_CONTENTOR", "ALTERNAR_TRAVA_CONTENTOR",
+  "ADICIONAR_ANOTACAO", "EDITAR_ANOTACAO", "DEFINIR_COR_ANOTACAO", "ALTERNAR_ANOTACAO", "REMOVER_ANOTACAO",
+]);
+
+const moduloEm = (estado, { noId, moduloId }) =>
+  estado.nodes.find(n => n.id === noId)?.modules?.find(m => m.id === moduloId);
+
+/**
+ * O diagrama no fim de `caminho` (a raiz se vazio), ou null se o caminho já não existe
+ * (nó apagado, módulo removido ou despromovido) — a vista usa isto para voltar atrás sozinha.
+ */
+export function diagramaEm(estado, caminho = []) {
+  let d = soDiagrama(estado);
+  for (const passo of caminho) {
+    const filho = moduloEm(d, passo)?.filho;
+    if (!filho) return null;
+    d = soDiagrama(filho);
+  }
+  return d;
+}
+
+/**
+ * Aplica `fn` ao sub-diagrama no fim de `caminho`. `fn` recebe um estado completo (documento
+ * + campos do sub-diagrama), por isso as regras do reducer valem igual em qualquer nível.
+ * Um no-op em baixo devolve o MESMO estado cá em cima (referência intacta).
+ */
+function noSubDiagrama(estado, [passo, ...resto], fn) {
+  const modulo = moduloEm(estado, passo);
+  if (!modulo?.filho) return estado;
+  const sub = { ...estado, ...soDiagrama(modulo.filho) };
+  const novo = resto.length ? noSubDiagrama(sub, resto, fn) : fn(sub);
+  if (novo === sub) return estado;
+  return {
+    ...estado,
+    nodes: estado.nodes.map(n => n.id !== passo.noId ? n : {
+      ...n, modules: n.modules.map(m => m.id !== passo.moduloId ? m : { ...m, filho: soDiagrama(novo) }),
+    }),
+  };
+}
+
 /** Uma ligação sourceId→targetId é permitida no estado actual? (modo + regra + duplicados) */
 export function podeLigar(estado, sourceId, targetId) {
   if (sourceId === targetId) return false;
@@ -69,6 +132,11 @@ export function podeLigar(estado, sourceId, targetId) {
 }
 
 export function projetoReducer(estado, accao) {
+  if (accao.caminho?.length && ACCOES_DE_DIAGRAMA.has(accao.tipo)) {
+    const { caminho, ...local } = accao;
+    return noSubDiagrama(estado, caminho, sub => projetoReducer(sub, { ...local, profundidade: caminho.length + 1 }));
+  }
+
   switch (accao.tipo) {
 
     // ── projecto inteiro ────────────────────────────────────────────────────
@@ -170,6 +238,33 @@ export function projetoReducer(estado, accao) {
       const mods = [...no.modules];
       [mods[i], mods[j]] = [mods[j], mods[i]];
       return { ...estado, nodes: estado.nodes.map(n => n.id === noId ? { ...n, modules: mods } : n) };
+    }
+
+    case "PROMOVER_MODULO": {
+      // `profundidade` = nível do diagrama onde o módulo vive (1 = raiz); vem do `caminho`.
+      // O filho fica um nível abaixo — recusa se isso passar do limite (DEC-013).
+      const { noId, moduloId, profundidade = 1 } = accao;
+      if (profundidade + 1 > PROFUNDIDADE_MAXIMA) return estado;
+      const modulo = moduloEm(estado, { noId, moduloId });
+      if (!modulo || modulo.filho) return estado; // já promovido: não apagar o que lá está
+      return {
+        ...estado,
+        nodes: estado.nodes.map(n => n.id !== noId ? n : {
+          ...n, modules: n.modules.map(m => m.id === moduloId ? { ...m, filho: diagramaVazio() } : m),
+        }),
+      };
+    }
+
+    case "DESPROMOVER_MODULO": {
+      // volta a ser só um item de lista — o sub-diagrama perde-se (a UI confirma antes)
+      const { noId, moduloId } = accao;
+      if (!moduloEm(estado, { noId, moduloId })?.filho) return estado;
+      return {
+        ...estado,
+        nodes: estado.nodes.map(n => n.id !== noId ? n : {
+          ...n, modules: n.modules.map(m => m.id === moduloId ? { ...m, filho: null } : m),
+        }),
+      };
     }
 
     case "ESCALAR_LAYOUT": {

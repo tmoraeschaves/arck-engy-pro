@@ -3,7 +3,7 @@
  * Cada transição é nomeada e testada (Manual Esqueleto v2.0, Regra de Ouro Operacional).
  */
 import { describe, it, expect } from "vitest";
-import { projetoReducer as r, estadoInicial, snapshot, podeLigar } from "../src/hooks/projeto-reducer.js";
+import { projetoReducer as r, estadoInicial, snapshot, podeLigar, diagramaEm, PROFUNDIDADE_MAXIMA } from "../src/hooks/projeto-reducer.js";
 
 const no = (id, layer, x = 0, y = 0) => ({ id, layer, x, y, createdAt: Number(id.replace(/\D/g, "")) || 0 });
 const comNos = (...nos) => ({ ...estadoInicial, nodes: nos });
@@ -370,5 +370,91 @@ describe("contentores (DEC-018)", () => {
     expect(e.containers).toEqual([]);
     e = r({ ...e, containers: [c("k1", 0, 0, 100, 100)] }, { tipo: "RESETAR" });
     expect(e.containers).toEqual([]);
+  });
+});
+
+describe("sub-diagramas — promover módulos e o `caminho` (Movimento 8, Fatia 3)", () => {
+  // raiz: nó n1 (L3) com o módulo m1 ("Autenticação")
+  const base = r(comNos(no("n1", "L3")), { tipo: "ADICIONAR_MODULO", noId: "n1", modulo: { id: "m1", label: "Autenticação" } });
+  const promover = (e, noId, moduloId, caminho) => r(e, { tipo: "PROMOVER_MODULO", noId, moduloId, caminho });
+  const nivel2 = [{ noId: "n1", moduloId: "m1" }];
+
+  it("PROMOVER_MODULO dá ao módulo um diagrama vazio; repetir não apaga o que lá está", () => {
+    let e = promover(base, "n1", "m1");
+    expect(e.nodes[0].modules[0].filho).toEqual({ nodes: [], connections: [], shapes: [], containers: [], annotations: [] });
+    e = r(e, { tipo: "ADICIONAR_NO", no: no("s1", "L1"), caminho: nivel2 });
+    expect(promover(e, "n1", "m1")).toBe(e);
+    expect(diagramaEm(e, nivel2).nodes).toHaveLength(1);
+  });
+
+  it("promover um módulo que não existe → no-op", () => {
+    expect(promover(base, "n1", "??")).toBe(base);
+    expect(promover(base, "??", "m1")).toBe(base);
+  });
+
+  it("acções com `caminho` editam o sub-diagrama e deixam a raiz intacta", () => {
+    let e = promover(base, "n1", "m1");
+    e = r(e, { tipo: "ADICIONAR_NO", no: no("s1", "L1", 10, 10), caminho: nivel2 });
+    e = r(e, { tipo: "ADICIONAR_NO", no: no("s2", "L2", 90, 10), caminho: nivel2 });
+    e = r(e, { tipo: "LIGAR", ligacao: { id: "c1", sourceId: "s1", targetId: "s2" }, caminho: nivel2 });
+    e = r(e, { tipo: "MOVER_NO", id: "s2", x: 200, y: 50, caminho: nivel2 });
+    expect(e.nodes.map(n => n.id)).toEqual(["n1"]);
+    expect(e.connections).toEqual([]);
+    const sub = diagramaEm(e, nivel2);
+    expect(sub.nodes.map(n => n.id)).toEqual(["s1", "s2"]);
+    expect(sub.nodes[1]).toMatchObject({ x: 200, y: 50 });
+    expect(sub.connections).toHaveLength(1);
+  });
+
+  it("no sub-diagrama valem as MESMAS regras: ligação inválida recusada no Guiado, nó trancado não se apaga", () => {
+    let e = promover(base, "n1", "m1");
+    e = r(e, { tipo: "ADICIONAR_NO", no: no("s1", "L1"), caminho: nivel2 });
+    e = r(e, { tipo: "ADICIONAR_NO", no: no("s3", "L3"), caminho: nivel2 });
+    expect(r(e, { tipo: "LIGAR", ligacao: { id: "x", sourceId: "s1", targetId: "s3" }, caminho: nivel2 })).toBe(e);
+    e = r(e, { tipo: "ALTERNAR_TRAVA_NO", id: "s1", caminho: nivel2 });
+    expect(r(e, { tipo: "REMOVER_NO", id: "s1", caminho: nivel2 })).toBe(e);
+  });
+
+  it("guarda dos 3 níveis: raiz → 2 → 3 pode; promover dentro do nível 3 é recusado", () => {
+    expect(PROFUNDIDADE_MAXIMA).toBe(3);
+    let e = promover(base, "n1", "m1");                                              // cria nível 2
+    e = r(e, { tipo: "ADICIONAR_NO", no: no("s1", "L2"), caminho: nivel2 });
+    e = r(e, { tipo: "ADICIONAR_MODULO", noId: "s1", modulo: { id: "m2", label: "JWT" }, caminho: nivel2 });
+    e = promover(e, "s1", "m2", nivel2);                                             // cria nível 3
+    const nivel3 = [...nivel2, { noId: "s1", moduloId: "m2" }];
+    expect(diagramaEm(e, nivel3)).toEqual({ nodes: [], connections: [], shapes: [], containers: [], annotations: [] });
+
+    e = r(e, { tipo: "ADICIONAR_NO", no: no("t1", "L4"), caminho: nivel3 });
+    e = r(e, { tipo: "ADICIONAR_MODULO", noId: "t1", modulo: { id: "m3", label: "chaves" }, caminho: nivel3 });
+    expect(diagramaEm(e, nivel3).nodes[0].modules).toHaveLength(1);                  // no nível 3 há módulos (lista)…
+    expect(promover(e, "t1", "m3", nivel3)).toBe(e);                                  // …mas não há nível 4
+  });
+
+  it("DESPROMOVER_MODULO devolve-o a item de lista; o caminho deixa de existir", () => {
+    let e = promover(base, "n1", "m1");
+    e = r(e, { tipo: "ADICIONAR_NO", no: no("s1", "L1"), caminho: nivel2 });
+    e = r(e, { tipo: "DESPROMOVER_MODULO", noId: "n1", moduloId: "m1" });
+    expect(e.nodes[0].modules[0]).toMatchObject({ label: "Autenticação", filho: null });
+    expect(diagramaEm(e, nivel2)).toBeNull();
+    expect(r(e, { tipo: "DESPROMOVER_MODULO", noId: "n1", moduloId: "m1" })).toBe(e); // já não tinha
+  });
+
+  it("caminho que já não existe → no-op (nunca rebenta)", () => {
+    const e = promover(base, "n1", "m1");
+    expect(r(e, { tipo: "ADICIONAR_NO", no: no("s1", "L1"), caminho: [{ noId: "n1", moduloId: "??" }] })).toBe(e);
+    expect(r(e, { tipo: "ADICIONAR_NO", no: no("s1", "L1"), caminho: [{ noId: "??", moduloId: "m1" }] })).toBe(e);
+  });
+
+  it("acções do documento ignoram o caminho (sector, modo, cores são do projecto inteiro)", () => {
+    const e = promover(base, "n1", "m1");
+    const d = r(e, { tipo: "DEFINIR_SECTOR", sector: "nuvem", caminho: nivel2 });
+    expect(d.sector).toBe("nuvem");
+  });
+
+  it("o sub-diagrama viaja no snapshot (autosave / JSON / modelos) sem código novo", () => {
+    let e = promover(base, "n1", "m1");
+    e = r(e, { tipo: "ADICIONAR_NO", no: no("s1", "L1"), caminho: nivel2 });
+    const reaberto = r(estadoInicial, { tipo: "CARREGAR_PROJETO", projeto: JSON.parse(JSON.stringify(snapshot(e))) });
+    expect(diagramaEm(reaberto, nivel2).nodes.map(n => n.id)).toEqual(["s1"]);
   });
 });
