@@ -87,4 +87,9 @@ Falta (é o que a DEC-005 manda fazer — só visual):
    de rolagem já está no tema (`.rolagem-fina`); falta decidir a forma (dropdown, só ícones,
    duas linhas).
 
+6. **Nós alinhados** (visto pelo Tiago num diagrama de 17 nós, 2026-09-27) — quando três nós
+   ficam colineares, a ligação entre os das pontas passa por dentro do nó do meio e não se
+   percebe onde acaba. Pede ligações curvas ou encaminhadas à volta dos nós — é layout, não
+   correcção pontual.
+
 Os itens 1, 2 e 5 são os que mais se notam para quem chega ao repo público.
