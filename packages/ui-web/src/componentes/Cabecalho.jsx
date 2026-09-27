@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { Download, FileImage, FileText, RotateCcw, Shapes, Upload } from "lucide-react";
-import { SECTORS } from "../config/sectores.js";
 import { METRICS } from "../config/app-meta.js";
+import { SeletorSector } from "./SeletorSector.jsx";
 
 // Barras do cabeçalho: altura e cor vêm da integridade (`health`); `pulso` só dá a fase da onda.
 // Erro (fracção 0) fica parado; inércia mexe pouco.
@@ -27,7 +27,7 @@ function BarrasIntegridade({ health, inercia, cor, texto, pulso }) {
 
 const botaoExportar = "w-7 h-7 flex items-center justify-center rounded-md text-white hover:bg-[#334155] transition-all";
 
-// Cabeçalho: faixa de versão/sector, integridade, separadores de sector, modo, import/export e marca.
+// Cabeçalho: faixa de versão/sector, integridade, selector de sector, modo, import/export e marca.
 // O <input type=file> do importador vive aqui — é detalhe deste componente, não do App.
 export function Cabecalho({
   sector, sectorActivo, modoLivre, modoSilencioso, temNos,
@@ -59,15 +59,7 @@ export function Cabecalho({
           <span className="text-base font-black leading-tight" style={{color:cor}}>{texto}</span>
         </div>
 
-        <div className="flex gap-1 border-l border-[#334155] pl-3 overflow-x-auto rolagem-fina">
-          {Object.entries(SECTORS).map(([key,s])=>(
-            <button key={key} onClick={()=>onEscolherSector(key)}
-              className={`px-2 h-7 text-[8px] font-bold rounded-md whitespace-nowrap transition-all
-                ${sector===key?"bg-emerald-700 text-white":"text-white hover:bg-[#1E293B]"}`}>
-              {s.icon} {s.name}
-            </button>
-          ))}
-        </div>
+        <SeletorSector sector={sector} sectorActivo={sectorActivo} onEscolher={onEscolherSector} />
 
         <button onClick={onAlternarModo}
           className={`ml-1 px-3 h-7 text-[9px] font-black rounded-md border transition-all flex-shrink-0

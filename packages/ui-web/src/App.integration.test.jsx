@@ -60,9 +60,9 @@ describe("App + reducer do projecto", () => {
   it("mudar de sector renomeia as camadas na sidebar", async () => {
     const user = await arrancar();
     expect(screen.getByTitle("Adicionar SENSÓRIA")).toBeInTheDocument();
-    // barra de tabs do header — botão do sector Medicina
-    const tabMedicina = screen.getAllByRole("button", { name: /Medicina/ })[0];
-    await user.click(tabMedicina);
+    // selector do cabeçalho (DEC-018): abrir a lista e escolher Medicina
+    await user.click(screen.getByTitle("Mudar de sector"));
+    await user.click(screen.getByRole("option", { name: /Medicina/ }));
     expect(screen.getByTitle("Adicionar DIAGNÓSTICO")).toBeInTheDocument();
   });
 

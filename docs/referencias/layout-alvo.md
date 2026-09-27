@@ -85,9 +85,9 @@ Falta (é o que a DEC-005 manda fazer — só visual):
    para as linhas que entram ou saem por baixo não o riscarem.
 3. **Grelha de linhas ténues** em vez de pontos — opcional, gosto.
 4. **Tokens de cor/espaçamento** num só sítio — hoje há hex espalhados (`#0F172A`, `#1E293B`…).
-5. **Faixa dos 12 sectores** — não cabe na maioria dos ecrãs (1422 e 1600 px incluídos). A barra
-   de rolagem já está no tema (`.rolagem-fina`); falta decidir a forma (dropdown, só ícones,
-   duas linhas).
+5. ✅ **Selector de sectores** (2026-09-27, DEC-018) — a faixa de 12 não cabia (1422 e 1600 px).
+   Agora o cabeçalho mostra só o sector activo; um clique abre os 12 em grelha, cada um com o
+   vocabulário das suas 5 camadas. Verificado em Chrome a 1422 e 1600 px.
 
 6. **Nós alinhados** (visto pelo Tiago num diagrama de 17 nós, 2026-09-27) — quando três nós
    ficam colineares, a ligação entre os das pontas passa por dentro do nó do meio e não se

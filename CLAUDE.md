@@ -21,7 +21,10 @@
   LICENSE MIT (código) + CC BY 4.0 (`docs/fundacao/`). **Repositório público desde 2026-09-26
   (v2.1.0)** — branch protection activa em `main` (3 checks obrigatórios; fecha a DEC-010).
 - **Testes:** core em `tsx` (44 coração + 11 fronteira), `ui-web` em **vitest + jsdom +
-  @testing-library/react** (151) — total **206**, 0 falhas.
+  @testing-library/react** (174) — total **229**, 0 falhas.
+- **Layout (DEC-018, 2026-09-27):** contentores de agrupamento desenhados à mão (só visuais —
+  `containers[]` no documento, conteúdo decidido pela geometria em `lib/contentores.js`) e
+  selector de sector em dropdown no cabeçalho. Falta do `layout-alvo.md`: itens 3, 4 e 6.
 - **Parqueado (pós-lançamento):** Movimento 8 fatias 3–5, layout novo (DEC-005,
   `docs/referencias/layout-alvo.md`), mobile/touch, notas redimensionáveis, auditoria do
   modelo de camadas (dois "L1–L5": o do diagrama vs. o da arquitectura limpa do código).
@@ -35,7 +38,7 @@ validação nos componentes. Para validar uma ligação, usa a ponte `packages/u
 ## Verificação rápida
 
 ```bash
-npm test                        # core (44) + fronteira (11) + ui-web (151) = 206, 0 falhas
+npm test                        # core (44) + fronteira (11) + ui-web (174) = 229, 0 falhas
 npm run lint -w packages/ui-web # ESLint, 0 problemas (também corre no CI)
 npm run build                   # Vite produção, dist/index.html gerado
 ```

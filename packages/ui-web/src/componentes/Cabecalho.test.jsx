@@ -48,4 +48,31 @@ describe("Cabecalho", () => {
     expect(screen.getByText(`v${raiz.version}`)).toBeInTheDocument();
     expect(screen.getByText(`ARCK core v${core.version}`)).toBeInTheDocument();
   });
+
+  it("sectores (DEC-018): só o activo à vista; o botão abre os 12, escolher fecha e avisa o App", () => {
+    const onEscolherSector = vi.fn();
+    montar({ onEscolherSector });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.click(screen.getByTitle("Mudar de sector"));
+    const opcoes = screen.getAllByRole("option");
+    expect(opcoes).toHaveLength(Object.keys(SECTORS).length);
+    expect(opcoes.find(o => o.getAttribute("aria-selected") === "true").textContent).toMatch(/Engenharia/);
+    // cada opção mostra o vocabulário das camadas desse sector
+    expect(screen.getByRole("option", { name: /Nuvem/ }).textContent).toMatch(/GATEWAY/);
+    fireEvent.click(screen.getByRole("option", { name: /Nuvem/ }));
+    expect(onEscolherSector).toHaveBeenCalledWith("nuvem");
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("sectores: Esc e clique fora fecham a lista sem escolher", () => {
+    const onEscolherSector = vi.fn();
+    montar({ onEscolherSector });
+    fireEvent.click(screen.getByTitle("Mudar de sector"));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.click(screen.getByTitle("Mudar de sector"));
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(onEscolherSector).not.toHaveBeenCalled();
+  });
 });
